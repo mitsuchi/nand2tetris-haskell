@@ -7,12 +7,12 @@ getAsm [] n file = ""
 getAsm (command:cs) n file = case C.commandType command of
     PUSH_COMMAND -> case segment command of
         "constant" -> getConst (value command) ++ "\n" ++ setRamP "SP"
-        "local" -> getRam "LCL" ++ "\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
-        "argument" -> getRam "ARG" ++ "\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
-        "this" -> getRam "THIS" ++ "\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
-        "that" -> getRam "THAT" ++ "\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
-        "temp" -> getConst "5" ++ "\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
-        "pointer" -> getConst "3" ++ "\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
+        "local" -> getRam "LCL" ++ "\n" ++ push (value command)
+        "argument" -> getRam "ARG" ++ "\n" ++ push (value command)
+        "this" -> getRam "THIS" ++ "\n" ++ push (value command)
+        "that" -> getRam "THAT" ++ "\n" ++ push (value command)
+        "temp" -> getConst "5" ++ "\n" ++ push (value command)
+        "pointer" -> getConst "3" ++ "\n" ++ push (value command)
         "static" -> getRam (file ++ "." ++ value command) ++ "\n@SP\nA=M\nM=D"
       ++ "\n" ++ inc "SP"
     POP_COMMAND -> case segment command of
@@ -57,3 +57,6 @@ getConst val = "@" ++ val ++ "\nD=A"
 
 setRamP :: String -> String
 setRamP symbol = "@" ++ symbol ++ "\nA=M\nM=D"
+
+push :: String -> String
+push val = setRamP "SP" ++ "\n" ++ getConst val ++ "\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
