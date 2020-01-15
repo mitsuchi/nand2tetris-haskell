@@ -17,7 +17,7 @@ main = do
     content <- readFile file
     let commands = filter (\line -> (not . null) line && (not . P.comment) line) $ map P.trimSpace $ P.plines content
     let asm = getAsm commands 0 
-    writeFile (changePostfix file "test.asm") asm
+    writeFile (changePostfix file "asm") asm
     return ()
 
 getAsm :: [String] -> Int -> String
@@ -25,8 +25,19 @@ getAsm [] n = ""
 getAsm (command:cs) n = case C.commandType command of
     PUSH_COMMAND -> case segment command of
         "constant" -> "@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1"
+        "local" -> "@LCL\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
+        "argument" -> "@ARG\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"        
+        "this" -> "@THIS\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"        
+        "that" -> "@THAT\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"        
+        "temp" -> "@5\nD=A\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"        
+        "pointer" -> "@3\nD=A\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"        
     POP_COMMAND -> case segment command of
-        "local" -> "hoge"
+        "local" -> "@LCL\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D\n@SP\nM=M-1"
+        "argument" -> "@ARG\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D\n@SP\nM=M-1"
+        "this" -> "@THIS\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D\n@SP\nM=M-1"
+        "that" -> "@THAT\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D\n@SP\nM=M-1"
+        "temp" -> "@5\nD=A\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D\n@SP\nM=M-1"
+        "pointer" -> "@3\nD=A\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D\n@SP\nM=M-1"
     CALC_COMMAND -> case operand command of
         "add" -> "@SP\nM=M-1\n@SP\nA=M\nA=M\nD=A\n@SP\nM=M-1\n@SP\nA=M\nM=D+M\n@SP\nM=M+1"
         "sub" -> "@SP\nM=M-1\n@SP\nA=M\nA=M\nD=A\n@SP\nM=M-1\n@SP\nA=M\nM=M-D\n@SP\nM=M+1"
