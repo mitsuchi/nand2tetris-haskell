@@ -6,7 +6,7 @@ getAsm :: [String] -> Int -> String -> String
 getAsm [] n file = ""
 getAsm (command:cs) n file = case C.commandType command of
     PUSH_COMMAND -> case segment command of
-        "constant" -> "@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D"
+        "constant" -> getConst (value command) ++ "\n" ++ setRamP "SP"
         "local" -> getRam "LCL" ++ "\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
         "argument" -> getRam "ARG" ++ "\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
         "this" -> getRam "THIS" ++ "\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
@@ -54,3 +54,6 @@ getRam symbol = "@" ++ symbol ++ "\nD=M"
 
 getConst :: String -> String
 getConst val = "@" ++ val ++ "\nD=A"
+
+setRamP :: String -> String
+setRamP symbol = "@" ++ symbol ++ "\nA=M\nM=D"
