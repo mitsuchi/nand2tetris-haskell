@@ -2,13 +2,15 @@ module Code where
 
 import Command as C
 import Data.Char
+import Data.List
 
 getAsm :: [String] -> Int -> String -> String
 getAsm [] n file = ""
 getAsm (command:cs) n file = case C.commandType command of
     PUSH_COMMAND -> case segment command of
-        "constant" -> evals ["D=" ++ value command, "*SP=D"]
-        "local" -> eval "D=LCL" ++ "\n" ++ push (value command)
+        "constant" -> evals ["*SP=" ++ value command]
+        --"local" -> eval "D=LCL" ++ "\n" ++ push (value command)
+        "local" -> evals ["*SP=LCL", "*SP+=" ++ value command, "*SP=**SP"]
         "argument" -> eval "D=ARG" ++ "\n" ++ push (value command)
         "this" -> eval "D=THIS" ++ "\n" ++ push (value command)
         "that" -> eval "D=THAT" ++ "\n" ++ push (value command)
@@ -50,34 +52,46 @@ inc symbol = "@" ++ symbol ++ "\nM=M+1"
 decr :: String -> String
 decr symbol = "@" ++ symbol ++ "\nM=M-1"
 
-setD :: String -> String -> String
-setD "toAddrOf" symbol = "@" ++ symbol ++ "\nD=M"
-setD "to" val = "@" ++ val ++ "\nD=A"
-
-setRamByDAtPointer :: String -> String
-setRamByDAtPointer symbol = "@" ++ symbol ++ "\nA=M\nM=D"
-
 push :: String -> String
-push val = setRamByDAtPointer "SP" ++ "\n" ++ setD "to" val ++ "\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
-
-set :: String -> String
-set "hoge" = "moge"
+push val = evals ["*SP=D", "D=" ++ val, "A=SP"] ++ "\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
 
 evals :: [String] -> String
 evals [] = ""
+evals [c] = eval c
 evals (c:cs) = eval c ++ "\n" ++ evals cs
 
 eval :: String -> String
-eval command = 
-    let left = takeWhile (/= '=') command
-        right = dropWhile (== '=') . dropWhile (/= '=') $ command 
-    in case (left, right) of
-        (reg, val)     | all isDigit val    -> "@" ++ val ++ "\n" ++ reg ++ "=A"
-        (reg, pointer) | isPointer pointer  -> "@" ++ pointer ++ "\n" ++ reg ++ "=M"
-        ('*':pointer, reg) | isRegister reg -> "@" ++ pointer ++ "\nA=M\nM=D"
+eval command = case subCommandType command of
+    "assign" -> 
+        let left = takeWhile (/= '=') command
+            right = dropWhile (== '=') . dropWhile (/= '=') $ command 
+        in case (left, right) of
+            ('*':p1, '*':'*':p2) | isPointer p1 && isPointer p2 -> evals ["D=**" ++ p2, "*" ++ p1 ++ "=D"]
+            ('*':pointer, const) | all isDigit const -> evals ["D=" ++ const, "*" ++ pointer ++ "=D"]
+            ('*':pointer, reg) | isRegister reg -> "@" ++ pointer ++ "\nA=M\nM=D"
+            ('*':pointer1, pointer2) | isPointer pointer2 -> evals ["D=" ++ pointer2, "*" ++ pointer1 ++ "=D"]
+            (reg, '*':'*':pointer) | isPointer pointer  -> eval ( "A=*" ++ pointer) ++ "\nD=M"
+            (reg, '*':pointer) | isPointer pointer  -> "@" ++ pointer ++ "\nA=M\n" ++ reg ++ "=M"
+            (reg, pointer) | isPointer pointer  -> "@" ++ pointer ++ "\n" ++ reg ++ "=M"
+            (reg, val)     | all isDigit val    -> "@" ++ val ++ "\n" ++ reg ++ "=A"
+            _              -> left ++ "|" ++ right
+    "add" ->
+        let left = takeWhile (/= '+') command
+            right = dropWhile (== '=') . dropWhile (/= '=') $ command 
+        in case (left, right) of
+            ('*':pointer, val) -> evals ["D=" ++ val] ++ "\n@" ++ pointer ++ "\n" ++ "A=M\nM=D+M"
+            (pointer, val)     -> evals ["D=" ++ val] ++ "\n@" ++ pointer ++ "\n" ++ "M=D+M"            
+    "other" -> command
 
 isPointer :: String -> Bool
 isPointer val = all (\x -> isAlpha x || x == '.') val && val /= "D" && val /= "A" && val /= "M"
 
 isRegister :: String -> Bool
-isRegister val = val == "D" || val == "A"
+isRegister val = val == "D" || val == "A" 
+
+subCommandType :: String -> String
+subCommandType command = case command of
+    _ | isInfixOf "+=" command -> "add"
+    _ | isInfixOf "-=" command -> "sub"
+    _ | isInfixOf "=" command -> "assign"
+    _                 -> "other"
