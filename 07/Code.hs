@@ -15,7 +15,8 @@ getAsm (command:cs) n file = case C.commandType command of
         "that" -> evals ["*SP=THAT", "*SP+=" ++ value command, "*SP=**SP"]
         "temp" -> evals ["*SP=5", "*SP+=" ++ value command, "*SP=**SP"]
         "pointer" -> evals ["*SP=3", "*SP+=" ++ value command, "*SP=**SP"]
-        "static" -> eval ("D=" ++ (file ++ "." ++ value command)) ++ "\n@SP\nA=M\nM=D"
+        --"static" -> eval ("D=" ++ (file ++ "." ++ value command)) ++ "\n@SP\nA=M\nM=D"
+        "static" -> evals ["*SP=" ++ (file ++ "." ++ value command)]
       ++ "\n" ++ inc "SP"
     POP_COMMAND -> case segment command of
         "local" -> "@LCL\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D"
@@ -83,7 +84,7 @@ eval command = case subCommandType command of
     "other" -> command
 
 isPointer :: String -> Bool
-isPointer val = all (\x -> isAlpha x || x == '.') val && val /= "D" && val /= "A" && val /= "M"
+isPointer val = isAlpha (head val) && all (\x -> isAlphaNum x || x == '.' || x == '-') val && val /= "D" && val /= "A" && val /= "M" 
 
 isRegister :: String -> Bool
 isRegister val = val == "D" || val == "A" 
