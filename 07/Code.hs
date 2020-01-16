@@ -18,12 +18,12 @@ getAsm (command:cs) n file = case C.commandType command of
         "static" -> evals ["*SP=" ++ (file ++ "." ++ value command)]
       ++ "\n" ++ inc "SP"
     POP_COMMAND -> case segment command of
-        "local" -> "@LCL\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D"
-        "argument" -> "@ARG\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D"
-        "this" -> "@THIS\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D"
-        "that" -> "@THAT\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D"
-        "temp" -> "@5\nD=A\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D"
-        "pointer" -> "@3\nD=A\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D"
+        "local" -> evals ["*SP=LCL+" ++ value command, "--SP", "D=*SP", "++SP", "**SP=D"]
+        "argument" -> evals ["*SP=ARG+" ++ value command, "--SP", "D=*SP", "++SP", "**SP=D"]
+        "this" -> evals ["*SP=THIS+" ++ value command, "--SP", "D=*SP", "++SP", "**SP=D"]
+        "that" -> evals ["*SP=THAT+" ++ value command, "--SP", "D=*SP", "++SP", "**SP=D"]
+        "temp" -> evals ["*SP=5+" ++ value command, "--SP", "D=*SP", "++SP", "**SP=D"]
+        "pointer" -> evals ["*SP=3+" ++ value command, "--SP", "D=*SP", "++SP", "**SP=D"]
         "static" -> "@SP\nM=M-1\nA=M\nD=M\n@" ++ file ++ "." ++ value command ++ "\nM=D\n" ++ inc "SP"
       ++ "\n" ++ decr "SP"
     CALC_COMMAND -> case operand command of
@@ -90,6 +90,8 @@ eval expr =
     let x = lexpr "=" expr
         y = rexpr "=" expr
     in case (x,y) of
+        ('+':'+':pointer, y) -> "@" ++ pointer ++ "\nM=M+1"
+        ('-':'-':pointer, y) -> "@" ++ pointer ++ "\nM=M-1"
         (x,y) | isRegister x && isRegister y -> expr
         (x,y) | isRegister x && isPointer y -> "@" ++ y ++ "\n" ++ x ++ "=M"
         (x,y) | isRegister x -> reval y ++ "\n" ++ x ++ "=D"        
