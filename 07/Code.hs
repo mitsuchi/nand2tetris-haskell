@@ -1,19 +1,20 @@
 module Code where
 
 import Command as C
+import Data.Char
 
 getAsm :: [String] -> Int -> String -> String
 getAsm [] n file = ""
 getAsm (command:cs) n file = case C.commandType command of
     PUSH_COMMAND -> case segment command of
-        "constant" -> getConst (value command) ++ "\n" ++ setRamP "SP"
-        "local" -> getRam "LCL" ++ "\n" ++ push (value command)
-        "argument" -> getRam "ARG" ++ "\n" ++ push (value command)
-        "this" -> getRam "THIS" ++ "\n" ++ push (value command)
-        "that" -> getRam "THAT" ++ "\n" ++ push (value command)
-        "temp" -> getConst "5" ++ "\n" ++ push (value command)
-        "pointer" -> getConst "3" ++ "\n" ++ push (value command)
-        "static" -> getRam (file ++ "." ++ value command) ++ "\n@SP\nA=M\nM=D"
+        "constant" -> evals ["D=" ++ value command, "*SP=D"]
+        "local" -> eval "D=LCL" ++ "\n" ++ push (value command)
+        "argument" -> eval "D=ARG" ++ "\n" ++ push (value command)
+        "this" -> eval "D=THIS" ++ "\n" ++ push (value command)
+        "that" -> eval "D=THAT" ++ "\n" ++ push (value command)
+        "temp" -> eval "D=5" ++ "\n" ++ push (value command)
+        "pointer" -> eval "D=3" ++ "\n" ++ push (value command)
+        "static" -> eval ("D=" ++ (file ++ "." ++ value command)) ++ "\n@SP\nA=M\nM=D"
       ++ "\n" ++ inc "SP"
     POP_COMMAND -> case segment command of
         "local" -> "@LCL\nD=M\n@SP\nA=M\nM=D\n@" ++ value command ++ "\nD=A\n@SP\nA=M\nM=D+M\n@SP\nM=M-1\nA=M\nD=M\n@SP\nM=M+1\nA=M\nA=M\nM=D"
@@ -49,14 +50,34 @@ inc symbol = "@" ++ symbol ++ "\nM=M+1"
 decr :: String -> String
 decr symbol = "@" ++ symbol ++ "\nM=M-1"
 
-getRam :: String -> String
-getRam symbol = "@" ++ symbol ++ "\nD=M"
+setD :: String -> String -> String
+setD "toAddrOf" symbol = "@" ++ symbol ++ "\nD=M"
+setD "to" val = "@" ++ val ++ "\nD=A"
 
-getConst :: String -> String
-getConst val = "@" ++ val ++ "\nD=A"
-
-setRamP :: String -> String
-setRamP symbol = "@" ++ symbol ++ "\nA=M\nM=D"
+setRamByDAtPointer :: String -> String
+setRamByDAtPointer symbol = "@" ++ symbol ++ "\nA=M\nM=D"
 
 push :: String -> String
-push val = setRamP "SP" ++ "\n" ++ getConst val ++ "\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
+push val = setRamByDAtPointer "SP" ++ "\n" ++ setD "to" val ++ "\n@SP\nA=M\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
+
+set :: String -> String
+set "hoge" = "moge"
+
+evals :: [String] -> String
+evals [] = ""
+evals (c:cs) = eval c ++ "\n" ++ evals cs
+
+eval :: String -> String
+eval command = 
+    let left = takeWhile (/= '=') command
+        right = dropWhile (== '=') . dropWhile (/= '=') $ command 
+    in case (left, right) of
+        (reg, val)     | all isDigit val    -> "@" ++ val ++ "\n" ++ reg ++ "=A"
+        (reg, pointer) | isPointer pointer  -> "@" ++ pointer ++ "\n" ++ reg ++ "=M"
+        ('*':pointer, reg) | isRegister reg -> "@" ++ pointer ++ "\nA=M\nM=D"
+
+isPointer :: String -> Bool
+isPointer val = all (\x -> isAlpha x || x == '.') val && val /= "D" && val /= "A" && val /= "M"
+
+isRegister :: String -> Bool
+isRegister val = val == "D" || val == "A"
