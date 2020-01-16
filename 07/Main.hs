@@ -25,4 +25,4 @@ changePostfix :: String -> String -> String
 changePostfix str postfix = (++ postfix ) . reverse . dropWhile (/= '.') . reverse $ str
 
 fileName :: String -> String
-fileName str = map (\x -> if x == '/' then '-' else x) . takeWhile (/= '.') $ str
+fileName str = map (\x -> if x == '/' then '.' else x) . takeWhile (/= '.') $ str
