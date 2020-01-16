@@ -27,8 +27,8 @@ getAsm (command:cs) n file = case C.commandType command of
         "static" -> "@SP\nM=M-1\nA=M\nD=M\n@" ++ file ++ "." ++ value command ++ "\nM=D\n" ++ inc "SP"
       ++ "\n" ++ decr "SP"
     CALC_COMMAND -> case operand command of
-        "add" -> "@SP\nM=M-1\n@SP\nA=M\nA=M\nD=A\n@SP\nM=M-1\n@SP\nA=M\nM=D+M\n@SP\nM=M+1"
-        "sub" -> "@SP\nM=M-1\n@SP\nA=M\nA=M\nD=A\n@SP\nM=M-1\n@SP\nA=M\nM=M-D\n@SP\nM=M+1"
+        "add" -> evals ["--SP", "D=*SP", "--SP", "*SP=*SP+D", "++SP"]        
+        "sub" -> evals ["--SP", "D=*SP", "--SP", "*SP=*SP-D", "++SP"]
         "neg" -> "@SP\nM=M-1\nA=M\nM=-M\n@SP\nM=M+1"
         "eq"  -> "@SP\nM=M-1\n@SP\nA=M\nA=M\nD=A\n@SP\nM=M-1\n@SP\nA=M\nM=M-D\nD=M\n" ++ 
             "@if-then" ++ show n ++ "\nD;JEQ\n@SP\nA=M\nM=0\n@if-end" ++ show n ++ "\n0;JMP\n" ++
@@ -92,6 +92,8 @@ eval expr =
     in case (x,y) of
         ('+':'+':pointer, y) -> "@" ++ pointer ++ "\nM=M+1"
         ('-':'-':pointer, y) -> "@" ++ pointer ++ "\nM=M-1"
+        ('*':ptr, y) | y == "*" ++ ptr ++ "+D" -> "@" ++ ptr ++ "\nA=M\nM=M+D"
+        ('*':ptr, y) | y == "*" ++ ptr ++ "-D" -> "@" ++ ptr ++ "\nA=M\nM=M-D"
         (x,y) | isRegister x && isRegister y -> expr
         (x,y) | isRegister x && isPointer y -> "@" ++ y ++ "\n" ++ x ++ "=M"
         (x,y) | isRegister x -> reval y ++ "\n" ++ x ++ "=D"        
