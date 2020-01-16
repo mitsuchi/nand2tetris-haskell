@@ -51,9 +51,6 @@ inc symbol = "@" ++ symbol ++ "\nM=M+1"
 decr :: String -> String
 decr symbol = "@" ++ symbol ++ "\nM=M-1"
 
-push :: String -> String
-push val = evals ["*SP=D", "D=" ++ val, "A=SP"] ++ "\nM=D+M\nA=M\nD=M\n@SP\nA=M\nM=D"
-
 isPointer :: String -> Bool
 isPointer val = isAlpha (head val) && all (\x -> isAlphaNum x || x == '.') val && val /= "D" && val /= "A" && val /= "M" 
 
