@@ -9,13 +9,12 @@ getAsm [] n file = ""
 getAsm (command:cs) n file = case C.commandType command of
     PUSH_COMMAND -> case segment command of
         "constant" -> evals ["*SP=" ++ value command]
-        --"local" -> eval "D=LCL" ++ "\n" ++ push (value command)
         "local" -> evals ["*SP=LCL", "*SP+=" ++ value command, "*SP=**SP"]
-        "argument" -> eval "D=ARG" ++ "\n" ++ push (value command)
-        "this" -> eval "D=THIS" ++ "\n" ++ push (value command)
-        "that" -> eval "D=THAT" ++ "\n" ++ push (value command)
-        "temp" -> eval "D=5" ++ "\n" ++ push (value command)
-        "pointer" -> eval "D=3" ++ "\n" ++ push (value command)
+        "argument" -> evals ["*SP=ARG", "*SP+=" ++ value command, "*SP=**SP"]
+        "this" -> evals ["*SP=THIS", "*SP+=" ++ value command, "*SP=**SP"]        
+        "that" -> evals ["*SP=THAT", "*SP+=" ++ value command, "*SP=**SP"]
+        "temp" -> evals ["*SP=5", "*SP+=" ++ value command, "*SP=**SP"]
+        "pointer" -> evals ["*SP=3", "*SP+=" ++ value command, "*SP=**SP"]
         "static" -> eval ("D=" ++ (file ++ "." ++ value command)) ++ "\n@SP\nA=M\nM=D"
       ++ "\n" ++ inc "SP"
     POP_COMMAND -> case segment command of
