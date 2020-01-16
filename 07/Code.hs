@@ -73,17 +73,13 @@ reval expr = case expr of
     '*':'*':ptr | isPointer ptr -> "@" ++ ptr ++ "\nA=M\nA=M\nD=M"
     '*':ptr | isPointer ptr -> "@" ++ ptr ++ "\nA=M\nD=M"
     '*':'(':expr -> reval (init expr) ++ "\nA=D\nD=M"
-    expr | exprType expr == "add" ->
+    expr | exprType expr == "add" || exprType expr == "sub" ->
         let l = lexpr "+-" expr
             r = rexpr "+-" expr
         in case r of
-            r | all isDigit r -> reval l ++ "\n@" ++ r ++ "\nD=D+A"
-    expr | exprType expr == "sub" ->
-        let l = lexpr "+-" expr
-            r = rexpr "+-" expr
-        in case r of
-            r | all isDigit r -> reval l ++ "\n@" ++ r ++ "\nD=D-A"
-    
+            r | all isDigit r -> 
+                reval l ++ "\n@" ++ r ++ "\nD=D" ++ binOp (exprType expr) ++ "A"
+
 evals :: [String] -> String
 evals [] = ""
 evals [c] = eval c
@@ -105,6 +101,10 @@ exprType expr = case expr of
     _ | isInfixOf "+" expr -> "add"
     _ | isInfixOf "-" expr -> "sub"
     _                      -> "other"
+
+binOp :: String -> String
+binOp "add" = "+"
+binOp "sub" = "-"
 
 lexpr :: String -> String -> String
 lexpr pattern expr = takeWhile (noneOf pattern) expr
