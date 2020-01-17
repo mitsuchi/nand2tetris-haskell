@@ -48,6 +48,7 @@ getAsm (command:cs) n file = case C.commandType command of
     GOTO_COMMAND -> "@" ++ label command ++ "\n0;JMP"
     FUNCTION_COMMAND -> writeFunction (function command) (numLocalVar command)
     RETURN_COMMAND -> writeReturn
+    CALL_COMMAND -> writeCall (function command) (numArg command) n
    ++ "\n" ++ getAsm cs (n+1) file
 
 writeReturn :: String
@@ -56,6 +57,14 @@ writeReturn = evals ["R13=LCL","RET=*(R13-5)","--SP","*ARG=*SP","SP=ARG+1","THAT
 
 writeFunction :: String -> Int -> String
 writeFunction name n = "(" ++ name ++ ")\n" ++ intercalate "\n" (map (\x -> evals ["*SP=0","++SP"]) [0..(n-1)])
+
+writeCall :: String -> Int -> Int -> String
+writeCall func n uniqNum = evals ["*SP=return.address." ++ (show uniqNum), "++SP", "*SP=LCL", "++SP",
+   "*SP=ARG", "++SP", "*SP=THIS", "++SP", "*SP=THAT", "++SP",
+   "ARG=SP-" ++ show (n+5), "LCL=SP"] ++ writeGoto ("return.address." ++ (show uniqNum))
+
+writeGoto :: String -> String
+writeGoto gotoLabel = "@" ++ gotoLabel ++ "\n0;JMP"
 
 inc :: String -> String
 inc symbol = "@" ++ symbol ++ "\nM=M+1"
