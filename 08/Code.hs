@@ -43,11 +43,19 @@ getAsm (command:cs) n file = case C.commandType command of
         "or" -> "@SP\nM=M-1\n@SP\nA=M\nA=M\nD=A\n@SP\nM=M-1\n@SP\nA=M\nM=D|M\n@SP\nM=M+1"
         "not" -> "@SP\nM=M-1\nA=M\nM=!M\n@SP\nM=M+1"
         _     -> "1" ++ operand command ++ "2"
-    LABEL_COMMAND -> "(" ++ file ++ "." ++ label command ++ ")"
+    LABEL_COMMAND -> "(" ++ label command ++ ")"
     IF_GOTO_COMMAND -> evals ["SP=SP-1","D=*SP"] ++ "\n@" ++ file ++ "." ++ label command ++ "\nD;JNE"
-    GOTO_COMMAND -> "@" ++ file ++ "." ++ label command ++ "\n0;JMP"
+    GOTO_COMMAND -> "@" ++ label command ++ "\n0;JMP"
+    FUNCTION_COMMAND -> writeFunction (function command) (numLocalVar command)
+    RETURN_COMMAND -> writeReturn
+   ++ "\n" ++ getAsm cs (n+1) file
 
-  ++ "\n" ++ getAsm cs (n+1) file
+writeReturn :: String
+writeReturn = evals ["R13=LCL","RET=*(R13-5)","--SP","*ARG=*SP","SP=ARG+1","THAT=*(R13-1)",
+    "THIS=*(R13-2)","ARG=*(R13-3)","LCL=*(R13-4)"] ++ "\n@RET\n0;JMP"
+
+writeFunction :: String -> Int -> String
+writeFunction name n = "(" ++ name ++ ")\n" ++ intercalate "\n" (map (\x -> evals ["*SP=0","++SP"]) [0..(n-1)])
 
 inc :: String -> String
 inc symbol = "@" ++ symbol ++ "\nM=M+1"

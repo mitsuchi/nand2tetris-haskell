@@ -1,6 +1,7 @@
 module Command where
 
-data CommandType = PUSH_COMMAND | POP_COMMAND | GOTO_COMMAND | CALC_COMMAND | LABEL_COMMAND | IF_GOTO_COMMAND deriving (Show, Eq)
+data CommandType = PUSH_COMMAND | POP_COMMAND | GOTO_COMMAND | CALC_COMMAND |
+                   LABEL_COMMAND | IF_GOTO_COMMAND | FUNCTION_COMMAND | RETURN_COMMAND deriving (Show, Eq)
 type Command = String
 
 toArgs :: String -> [String]
@@ -13,12 +14,16 @@ commandType command = case (split command) !! 0 of
     "goto" -> GOTO_COMMAND
     "label" -> LABEL_COMMAND
     "if-goto" -> IF_GOTO_COMMAND
+    "function" -> FUNCTION_COMMAND
+    "return" -> RETURN_COMMAND
     _      -> CALC_COMMAND
 
 operand command = split command !! 0
 segment command = split command !! 1
 label command = split command !! 1
+function command = split command !! 1
 value command = split command !! 2
+numLocalVar command = read (split command !! 2) :: Int
 
 split = _split []
 _split ts "" = ts
