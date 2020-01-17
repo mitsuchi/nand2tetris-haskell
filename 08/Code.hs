@@ -45,6 +45,7 @@ getAsm (command:cs) n file = case C.commandType command of
         _     -> "1" ++ operand command ++ "2"
     LABEL_COMMAND -> "(" ++ file ++ "." ++ label command ++ ")"
     IF_GOTO_COMMAND -> evals ["SP=SP-1","D=*SP"] ++ "\n@" ++ file ++ "." ++ label command ++ "\nD;JNE"
+    GOTO_COMMAND -> "@" ++ file ++ "." ++ label command ++ "\n0;JMP"
 
   ++ "\n" ++ getAsm cs (n+1) file
 
