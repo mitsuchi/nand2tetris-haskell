@@ -43,25 +43,34 @@ getAsm (command:cs) n file = case C.commandType command of
         "or" -> "@SP\nM=M-1\n@SP\nA=M\nA=M\nD=A\n@SP\nM=M-1\n@SP\nA=M\nM=D|M\n@SP\nM=M+1"
         "not" -> "@SP\nM=M-1\nA=M\nM=!M\n@SP\nM=M+1"
         _     -> "1" ++ operand command ++ "2"
-    LABEL_COMMAND -> "(" ++ label command ++ ")"
+    LABEL_COMMAND -> "(" ++ file ++ "." ++ label command ++ ")"
     IF_GOTO_COMMAND -> evals ["SP=SP-1","D=*SP"] ++ "\n@" ++ file ++ "." ++ label command ++ "\nD;JNE"
-    GOTO_COMMAND -> "@" ++ label command ++ "\n0;JMP"
+    GOTO_COMMAND -> "@" ++ file ++ "." ++ label command ++ "\n0;JMP"
     FUNCTION_COMMAND -> writeFunction (function command) (numLocalVar command)
     RETURN_COMMAND -> writeReturn
     CALL_COMMAND -> writeCall (function command) (numArg command) n
    ++ "\n" ++ getAsm cs (n+1) file
 
+bootStrap :: String
+bootStrap = evals ["SP=256"] ++ "\n" ++ writeCall "Sys.init" 0 0
+
 writeReturn :: String
 writeReturn = evals ["R13=LCL","RET=*(R13-5)","--SP","*ARG=*SP","SP=ARG+1","THAT=*(R13-1)",
-    "THIS=*(R13-2)","ARG=*(R13-3)","LCL=*(R13-4)"] ++ "\n@RET\n0;JMP"
+    "THIS=*(R13-2)","ARG=*(R13-3)","LCL=*(R13-4)"] ++ "\n@RET\nA=M\n0;JMP"
 
 writeFunction :: String -> Int -> String
-writeFunction name n = "(" ++ name ++ ")\n" ++ intercalate "\n" (map (\x -> evals ["*SP=0","++SP"]) [0..(n-1)])
+writeFunction name n = "(" ++ name ++ ")" 
+    ++ if n>0
+        then "\n" ++ intercalate "\n" (map (\x -> evals ["*SP=0","++SP"]) [0..(n-1)]) 
+        else ""
 
 writeCall :: String -> Int -> Int -> String
-writeCall func n uniqNum = evals ["*SP=return.address." ++ (show uniqNum), "++SP", "*SP=LCL", "++SP",
-   "*SP=ARG", "++SP", "*SP=THIS", "++SP", "*SP=THAT", "++SP",
-   "ARG=SP-" ++ show (n+5), "LCL=SP"] ++ writeGoto ("return.address." ++ (show uniqNum))
+--writeCall func n uniqNum = evals ["*SP=return.address." ++ (show uniqNum), "++SP", "*SP=LCL", "++SP",
+writeCall func n uniqNum = "@return.address." ++ (show uniqNum) ++ "\nD=A\n" ++
+    evals ["*SP=D", "++SP", "*SP=LCL", "++SP",
+    "*SP=ARG", "++SP", "*SP=THIS", "++SP", "*SP=THAT", "++SP",
+    "ARG=SP-" ++ show (n+5), "LCL=SP"] ++ "\n" ++ 
+    writeGoto func ++ "\n(" ++ "return.address." ++ (show uniqNum) ++ ")"
 
 writeGoto :: String -> String
 writeGoto gotoLabel = "@" ++ gotoLabel ++ "\n0;JMP"
