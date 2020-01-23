@@ -58,23 +58,27 @@ cppComment = symbol "//" >> (endWith "\n" <|> many anyChar)
 cComment :: Parser String
 cComment = symbol "/*" >> endWith "*/"
 
-data Stmt = LetStmt [Name] deriving Show
-type Name = String
+data Stmt = VarStmt TypeName [VarName] deriving Show
+type VarName = String
+type TypeName = String
 
-nameLit :: Parser Name
-nameLit = do
-    h <- letter
-    r <- many (letter <|> digit)
-    return $ h : r
+nameLit :: Parser String
+-- nameLit = do
+--     h <- letter
+--     r <- many (letter <|> digit)
+--     return $ h : r
+nameLit = (:) <$> letter <*> many (letter <|> digit) <* spaces
 
 -- let name (, name)*
-letStmt :: Parser Stmt
+varStmt :: Parser Stmt
 --letStmt = reserved "let" >> sepBy1 (token ",") nameLit
-letStmt = do
-    reserved "let"
+varStmt = do
+    reserved "var"
+    typeName <- nameLit
     name1 <- nameLit
     names <- many (symbol "," >> nameLit)
-    return $ LetStmt $ name1 : names
+    return $ VarStmt typeName $ name1 : names
+--letStmt = (:) <$> reserved "let" *> nameLit <*> many (symbol "," >> nameLit)
 
 stmt :: Parser Stmt
-stmt = letStmt <* symbol ";" 
+stmt = varStmt <* symbol ";" 
