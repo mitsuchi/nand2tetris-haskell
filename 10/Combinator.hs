@@ -58,9 +58,8 @@ cppComment = symbol "//" >> (endWith "\n" <|> many anyChar)
 cComment :: Parser String
 cComment = symbol "/*" >> endWith "*/"
 
-data Dec = VarDec TypeName [VarName] deriving Show
-type VarName = String
-type TypeName = String
+data VarDec = VarDec Name [Name] deriving Show
+data Name = Keyword String | Identifier String deriving Show
 
 nameLit :: Parser String
 -- nameLit = do
@@ -70,15 +69,25 @@ nameLit :: Parser String
 nameLit = (:) <$> letter <*> many (letter <|> digit) <* spaces
 
 -- let name (, name)*
-varDec :: Parser Dec
+varDec :: Parser VarDec
 --letStmt = reserved "let" >> sepBy1 (token ",") nameLit
 varDec = do
     reserved "var"
-    typeName <- nameLit
-    name1 <- nameLit
-    names <- many (symbol "," >> nameLit)
-    return $ VarDec typeName $ name1 : names
+--    typeName <- nameLit
+    typeS <- typeKeyword <|> identifier
+    varName1 <- identifier
+    varNames <- many (symbol "," >> identifier)
+    symbol ";"
+    return $ VarDec typeS $ varName1 : varNames
 --letStmt = (:) <$> reserved "let" *> nameLit <*> many (symbol "," >> nameLit)
 
-dec :: Parser Dec
-dec = varDec <* symbol ";" 
+typeKeyword :: Parser Name
+typeKeyword = do
+    k <- reserved "int" <|> reserved "char" <|> reserved "boolean"
+    return $ Keyword k
+
+identifier :: Parser Name
+identifier = do
+    f <- letter <|> char '_'
+    r <- many (letter <|> char '_' <|> digit) <* spaces
+    return $ Identifier $ f : r
