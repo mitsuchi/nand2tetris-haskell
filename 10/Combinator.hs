@@ -91,3 +91,14 @@ identifier = do
     f <- letter <|> char '_'
     r <- many (letter <|> char '_' <|> digit) <* spaces
     return $ Identifier $ f : r
+
+keyword :: Parser Name
+keyword = do
+    k <- reserveds ["class", "constructor", "function", "method", "field", "static", "var",
+            "int", "char", "boolean", "void", "true", "false", "null", "this", "let", "do",
+            "if", "else", "while", "return" ]
+    return $ Keyword k    
+
+reserveds :: [String] -> Parser String
+reserveds [s] = reserved s
+reserveds (s:r) = reserved s <|> reserveds r
