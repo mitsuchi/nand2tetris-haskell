@@ -77,11 +77,11 @@ varDec :: Parser VarDec
 varDec = do
     reserved "var"
 --    typeName <- nameLit
-    typeS <- typeKeyword <|> identifier
+    type' <- typeKeyword <|> identifier
     varName1 <- identifier
     varNames <- many (symbol "," >> identifier)
     symbol ";"
-    return $ VarDec typeS $ varName1 : varNames
+    return $ VarDec type' $ varName1 : varNames
 --letStmt = (:) <$> reserved "let" *> nameLit <*> many (symbol "," >> nameLit)
 
 typeKeyword :: Parser Name
@@ -116,8 +116,8 @@ data ClassVarDec = ClassVarDec AccessName TypeName [VarName]
 classVarDec :: Parser ClassVarDec
 classVarDec = do
     access <- reserveds ["static", "field"]
-    typeK <- typeKeyword
+    type' <- typeKeyword
     varName1 <- identifier
     varNames <- many (symbol "," >> identifier)
     symbol ";"
-    return $ ClassVarDec (Keyword access) typeK $ varName1 : varNames
+    return $ ClassVarDec (Keyword access) type' $ varName1 : varNames
