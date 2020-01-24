@@ -60,6 +60,9 @@ cComment = symbol "/*" >> endWith "*/"
 
 data VarDec = VarDec Name [Name] deriving Show
 data Name = Keyword String | Identifier String deriving Show
+type TypeName = Name
+type VarName = Name
+type AccessName = Name
 
 nameLit :: Parser String
 -- nameLit = do
@@ -86,6 +89,11 @@ typeKeyword = do
     k <- reserved "int" <|> reserved "char" <|> reserved "boolean"
     return $ Keyword k
 
+accessKeyword :: Parser Name
+accessKeyword = do
+    k <- reserveds ["field", "static"]
+    return $ Keyword k
+
 identifier :: Parser Name
 identifier = do
     f <- letter <|> char '_'
@@ -102,3 +110,14 @@ keyword = do
 reserveds :: [String] -> Parser String
 reserveds [s] = reserved s
 reserveds (s:r) = reserved s <|> reserveds r
+
+data ClassVarDec = ClassVarDec AccessName TypeName [VarName]
+
+classVarDec :: Parser ClassVarDec
+classVarDec = do
+    access <- reserveds ["static", "field"]
+    typeK <- typeKeyword
+    varName1 <- identifier
+    varNames <- many (symbol "," >> identifier)
+    symbol ";"
+    return $ ClassVarDec (Keyword access) typeK $ varName1 : varNames
