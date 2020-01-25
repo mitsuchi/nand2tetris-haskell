@@ -135,8 +135,8 @@ symbols (s:r) = symbol s <|> symbols r
 
 op = ["+", "-", "*", "/", "&", "|", "<", ">", "="]
 
--- expressionList :: Parser [Expr]
--- expressionList = manyWith (symbol ",") expr
+expressionList :: Parser [Expr]
+expressionList = manyWith (symbol ",") expr
 
 integerConstant :: Parser Expr
 integerConstant = IntegerConstant <$> token number
@@ -149,8 +149,52 @@ stringConstant = do
     pure $ StringConstant str
 
 expr :: Parser Expr
-expr = integerConstant `chainl1` (binOps op)
+expr = term `chainl1` (binOps op)
 
 binOps :: [String] -> Parser (Expr -> Expr -> Expr)
 binOps [s] = binOp s
 binOps (s:r) = binOp s <|> binOps r
+
+varName = identifier
+
+term :: Parser Expr
+term = integerConstant 
+    <|> stringConstant
+    <|> keywordConstant
+    <|> varName
+    <|> between "[" expr "]"
+    <|> between "(" expr ")"
+    <|> unaryOpTerm
+
+between :: String -> Parser Expr -> String -> Parser Expr
+between a e b = do
+    reserved a
+    e' <- e
+    reserved b
+    pure $ Between a e' b
+
+unaryOpTerm :: Parser Expr
+unaryOpTerm = do
+    u <- symbol "-" <|> symbol "~"
+    t <- term
+    pure $ UnaryOp u t
+
+subroutineCall :: Parser Expr
+subroutineCall = 
+    do
+        s <- subroutineName
+        symbol "("
+        es <- expressionList
+        symbol ")"
+        pure $ SubroutineCall Nothing s es
+    <|>
+    do
+        n <- identifier
+        s <- subroutineName
+        symbol "("
+        es <- expressionList
+        symbol ")"
+        pure $ SubroutineCall (Just n) s es
+
+className = identifier
+subroutineName = identifier
