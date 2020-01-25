@@ -27,5 +27,6 @@ type TypeName = Expr
 type VarName = Expr
 type AccessName = Expr
 
-data SubroutineBody = SubroutineBody [VarDec] [Stmt]
-
+data SubroutineBody = SubroutineBody [VarDec] [Stmt] deriving Show
+data SubroutineDec = SubroutineDec Expr Expr Expr [Param] SubroutineBody deriving Show
+data Param = Param Expr Expr deriving Show -- Type Nambe

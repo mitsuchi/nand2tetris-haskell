@@ -247,4 +247,14 @@ subroutineBody = do
     symbol "}"
     pure $ SubroutineBody vs stmts
 
+subRoutineDec :: Parser SubroutineDec
+subRoutineDec = do
+    subRoutineType <- reserveds ["constructor", "function", "method"]
+    returnType <- (Keyword <$> reserved "void") <|> typeKeyword
+    sName <- subroutineName    
+    pList <- between "(" (manyWith (symbol ",") param) ")"
+    sBody <- subroutineBody
+    pure $ SubroutineDec (Keyword subRoutineType) returnType sName pList sBody
 
+param :: Parser Param
+param = Param <$> typeKeyword <*> varName
