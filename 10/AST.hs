@@ -13,5 +13,6 @@ data Expr = KeywordConstant String
 
 data Stmt = Do Expr
     | Return (Maybe Expr)
+    | While Expr [Stmt]
     deriving Show
 

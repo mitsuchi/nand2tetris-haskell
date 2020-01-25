@@ -162,12 +162,12 @@ term = integerConstant
     <|> stringConstant
     <|> keywordConstant
     <|> varName
-    <|> between "[" expr "]"
-    <|> between "(" expr ")"
+    <|> betweenExpr "[" expr "]"
+    <|> betweenExpr "(" expr ")"
     <|> unaryOpTerm
 
-between :: String -> Parser Expr -> String -> Parser Expr
-between a e b = do
+betweenExpr :: String -> Parser Expr -> String -> Parser Expr
+betweenExpr a e b = do
     reserved a
     e' <- e
     reserved b
@@ -183,17 +183,13 @@ subroutineCall :: Parser Expr
 subroutineCall = 
     do
         s <- subroutineName
-        symbol "("
-        es <- expressionList
-        symbol ")"
+        es <- between "(" expressionList ")"
         pure $ SubroutineCall Nothing s es
     <|>
     do
         n <- identifier
         s <- subroutineName
-        symbol "("
-        es <- expressionList
-        symbol ")"
+        es <- between "(" expressionList ")"
         pure $ SubroutineCall (Just n) s es
 
 className = identifier
@@ -215,3 +211,16 @@ returnStatement = do
     symbol ";"
     pure $ Return e
 
+whileStatement :: Parser Stmt
+whileStatement = do
+    reserved "while"
+    e <- between "(" expr ")"
+    stmts <- between "{" statements "}"
+    pure $ While e stmts
+
+statements = many statement
+
+statement :: Parser Stmt
+statement = doStatement
+    <|> returnStatement
+    <|> whileStatement

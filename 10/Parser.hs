@@ -129,3 +129,7 @@ someWith a b = do
 
 manyWith :: Parser a -> Parser b -> Parser [b]
 manyWith a b = someWith a b <|> pure []
+
+between :: String -> Parser a -> String -> Parser a
+between begin p end = 
+    reserved begin >> p <* reserved end
