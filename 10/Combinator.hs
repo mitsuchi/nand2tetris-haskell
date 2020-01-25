@@ -198,3 +198,20 @@ subroutineCall =
 
 className = identifier
 subroutineName = identifier
+
+-- statements
+
+doStatement :: Parser Stmt
+doStatement = do
+    reserved "do"
+    s <- subroutineCall
+    symbol ";"
+    pure $ Do s
+
+returnStatement :: Parser Stmt
+returnStatement = do
+    reserved "return"
+    e <- option expr
+    symbol ";"
+    pure $ Return e
+

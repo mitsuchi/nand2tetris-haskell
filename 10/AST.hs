@@ -11,7 +11,7 @@ data Expr = KeywordConstant String
     | SubroutineCall (Maybe Expr) Expr [Expr]
     deriving Show
 
-data Stmt = 
-    Do Expr
+data Stmt = Do Expr
+    | Return (Maybe Expr)
     deriving Show
 
