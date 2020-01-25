@@ -1,55 +1,56 @@
 module Combinator where
 
 import Parser
+import AST
 
-data Expr = IntLit Int
-    | BinOp String Expr Expr
-    deriving Show
+-- data Expr = IntLit Int
+--     | BinOp String Expr Expr
+--     deriving Show
 
-num :: Parser Expr
-num = IntLit <$> token number
+-- num :: Parser Expr
+-- num = IntLit <$> token number
 
 symbol :: String -> Parser String
 symbol str = token $ string str
 
-expr :: Parser Expr
-expr = equality
+-- expr :: Parser Expr
+-- expr = equality
 
-binOp :: String -> Parser (Expr -> Expr -> Expr)
-binOp str = symbol str >> pure (BinOp str)
+-- binOp :: String -> Parser (Expr -> Expr -> Expr)
+-- binOp str = symbol str >> pure (BinOp str)
 
-equality :: Parser Expr
-equality = 
-    relational `chainl1` ((binOp "==") <|> (binOp "!="))
+-- equality :: Parser Expr
+-- equality = 
+--     relational `chainl1` ((binOp "==") <|> (binOp "!="))
 
-relational :: Parser Expr
-relational =
-    chainl1 add $
-        (binOp "<=")
-        <|> (binOp "<")
-        <|> (symbol ">=" >> pure (flip $ BinOp "<="))
-        <|> (symbol ">" >> pure (flip $ BinOp "<"))
+-- relational :: Parser Expr
+-- relational =
+--     chainl1 add $
+--         (binOp "<=")
+--         <|> (binOp "<")
+--         <|> (symbol ">=" >> pure (flip $ BinOp "<="))
+--         <|> (symbol ">" >> pure (flip $ BinOp "<"))
 
-add :: Parser Expr
-add = 
-    mul `chainl1` ((binOp "+") <|> (binOp "-"))
+-- add :: Parser Expr
+-- add = 
+--     mul `chainl1` ((binOp "+") <|> (binOp "-"))
 
-mul :: Parser Expr
-mul = do
-    unary `chainl1` ((binOp "*") <|> (binOp "/"))
+-- mul :: Parser Expr
+-- mul = do
+--     unary `chainl1` ((binOp "*") <|> (binOp "/"))
 
-unary :: Parser Expr
-unary = 
-    (symbol "+" >> primary)
-    <|>
-    (BinOp "-" (IntLit 0) <$> (symbol "-" >> primary))
-    <|>
-    primary
+-- unary :: Parser Expr
+-- unary = 
+--     (symbol "+" >> primary)
+--     <|>
+--     (BinOp "-" (IntLit 0) <$> (symbol "-" >> primary))
+--     <|>
+--     primary
 
-primary :: Parser Expr
-primary = (symbol "(" *> expr <* symbol ")") <|> num
+-- primary :: Parser Expr
+-- primary = (symbol "(" *> expr <* symbol ")") <|> num
 
-program = spaces >> expr
+-- program = spaces >> expr
 
 cppComment :: Parser String
 --cppComment = symbol "//" >> nonLineBreak >> lineBreak
@@ -58,11 +59,10 @@ cppComment = symbol "//" >> (endWith "\n" <|> many anyChar)
 cComment :: Parser String
 cComment = symbol "/*" >> endWith "*/"
 
-data VarDec = VarDec Name [Name] deriving Show
-data Name = Keyword String | Identifier String deriving Show
-type TypeName = Name
-type VarName = Name
-type AccessName = Name
+data VarDec = VarDec Expr [Expr] deriving Show
+type TypeName = Expr
+type VarName = Expr
+type AccessName = Expr
 
 nameLit :: Parser String
 -- nameLit = do
@@ -84,23 +84,23 @@ varDec = do
     return $ VarDec type' $ varName1 : varNames
 --letStmt = (:) <$> reserved "let" *> nameLit <*> many (symbol "," >> nameLit)
 
-typeKeyword :: Parser Name
+typeKeyword :: Parser Expr
 typeKeyword = do
     k <- reserved "int" <|> reserved "char" <|> reserved "boolean"
     return $ Keyword k
 
-accessKeyword :: Parser Name
+accessKeyword :: Parser Expr
 accessKeyword = do
     k <- reserveds ["field", "static"]
     return $ Keyword k
 
-identifier :: Parser Name
+identifier :: Parser Expr
 identifier = do
     f <- letter <|> char '_'
     r <- many (letter <|> char '_' <|> digit) <* spaces
     return $ Identifier $ f : r
 
-keyword :: Parser Name
+keyword :: Parser Expr
 keyword = do
     k <- reserveds ["class", "constructor", "function", "method", "field", "static", "var",
             "int", "char", "boolean", "void", "true", "false", "null", "this", "let", "do",
@@ -121,3 +121,30 @@ classVarDec = do
     varNames <- many (symbol "," >> identifier)
     symbol ";"
     return $ ClassVarDec (Keyword access) type' $ varName1 : varNames
+
+keywordConstant :: Parser Expr
+keywordConstant = do
+    k <- reserveds ["true", "false", "nil", "this"]
+    return $ KeywordConstant k
+
+unaryOp = symbol "~" <|> symbol "-"
+
+symbols :: [String] -> Parser String
+symbols [s] = symbol s
+symbols (s:r) = symbol s <|> symbols r
+
+op = symbols ["+", "-", "*", "/", "&", "|", "<", ">", "="]
+
+-- expressionList :: Parser [Expr]
+-- expressionList = manyWith (symbol ",") expr
+
+integerConstant :: Parser Expr
+integerConstant = IntegerConstant <$> token number
+
+stringConstant :: Parser Expr
+stringConstant = do
+    symbol "\""
+    str <- many (noneOf "\"\n")
+    symbol "\""
+    pure $ StringConstant str
+

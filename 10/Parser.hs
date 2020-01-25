@@ -24,6 +24,11 @@ many p = ((:) <$> p <*> many p) <|> (pure [])
 
 some p = (:) <$> p <*> (some p <|> pure [])
 
+--option :: Parser a -> Parser [a]
+--option p = ((:) <$> p <*> pure []) <|> pure []
+option :: Parser a -> Parser (Maybe a)
+option p = (Just <$> p) <|> pure Nothing
+
 --string (x:xs) = (:) <$> char x <*> string xs
 string (x:xs) = do
     x1 <- char x
@@ -115,3 +120,12 @@ parse f s = case runStateT f s of
     Right (r, "") -> Right r
     Right (r, _)  -> Left "parser error: does not consume all text"
     Left e        -> Left $ "parser error: [" ++ show s ++ "] " ++ e
+
+someWith :: Parser a -> Parser b -> Parser [b]
+someWith a b = do
+    b' <- b
+    bs' <- many ( a >> b )
+    return $ b' : bs'
+
+manyWith :: Parser a -> Parser b -> Parser [b]
+manyWith a b = someWith a b <|> pure []
