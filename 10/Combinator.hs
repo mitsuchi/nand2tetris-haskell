@@ -218,9 +218,29 @@ whileStatement = do
     stmts <- between "{" statements "}"
     pure $ While e stmts
 
+ifStatement :: Parser Stmt
+ifStatement = do
+    reserved "if"
+    cond <- between "(" expr ")"
+    thenStmts <- between "{" statements "}"
+    elseStmts <- option $ reserved "else" >> between "{" statements "}"
+    pure $ If cond thenStmts elseStmts    
+
+letStatement :: Parser Stmt
+letStatement = do
+    reserved "let"
+    v <- varName
+    index <- option $ between "[" expr "]"
+    symbol "="
+    e <- expr
+    symbol ";"
+    pure $ Let v index e
+
 statements = many statement
 
 statement :: Parser Stmt
 statement = doStatement
     <|> returnStatement
     <|> whileStatement
+    <|> ifStatement
+    <|> letStatement
