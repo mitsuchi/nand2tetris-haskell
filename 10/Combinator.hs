@@ -59,10 +59,6 @@ cppComment = symbol "//" >> (endWith "\n" <|> many anyChar)
 cComment :: Parser String
 cComment = symbol "/*" >> endWith "*/"
 
-data VarDec = VarDec Expr [Expr] deriving Show
-type TypeName = Expr
-type VarName = Expr
-type AccessName = Expr
 
 nameLit :: Parser String
 -- nameLit = do
@@ -110,8 +106,6 @@ keyword = do
 reserveds :: [String] -> Parser String
 reserveds [s] = reserved s
 reserveds (s:r) = reserved s <|> reserveds r
-
-data ClassVarDec = ClassVarDec AccessName TypeName [VarName]
 
 classVarDec :: Parser ClassVarDec
 classVarDec = do
@@ -244,3 +238,13 @@ statement = doStatement
     <|> whileStatement
     <|> ifStatement
     <|> letStatement
+
+subroutineBody :: Parser SubroutineBody
+subroutineBody = do
+    symbol "{"
+    vs <- many varDec
+    stmts <- statements
+    symbol "}"
+    pure $ SubroutineBody vs stmts
+
+

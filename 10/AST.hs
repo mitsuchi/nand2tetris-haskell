@@ -18,3 +18,14 @@ data Stmt = Do Expr
     | Let Expr (Maybe Expr) Expr
     deriving Show
 
+--data Class = Class Expr [ClassVarDec] [SubroutineDec]
+
+data ClassVarDec = ClassVarDec AccessName TypeName [VarName]
+
+data VarDec = VarDec Expr [Expr] deriving Show
+type TypeName = Expr
+type VarName = Expr
+type AccessName = Expr
+
+data SubroutineBody = SubroutineBody [VarDec] [Stmt]
+
