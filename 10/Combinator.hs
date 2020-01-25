@@ -247,8 +247,8 @@ subroutineBody = do
     symbol "}"
     pure $ SubroutineBody vs stmts
 
-subRoutineDec :: Parser SubroutineDec
-subRoutineDec = do
+subroutineDec :: Parser SubroutineDec
+subroutineDec = do
     subRoutineType <- reserveds ["constructor", "function", "method"]
     returnType <- (Keyword <$> reserved "void") <|> typeKeyword
     sName <- subroutineName    
@@ -261,9 +261,10 @@ param = Param <$> typeKeyword <*> varName
 
 klass :: Parser Klass
 klass = do
+    reserved "class"
     k <- className
     symbol "{"
     cvds <- many classVarDec
-    subs <- many subRoutineDec
+    subs <- many subroutineDec
     symbol "}"
     pure $ Klass k cvds subs

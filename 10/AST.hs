@@ -20,7 +20,7 @@ data Stmt = Do Expr
 
 --data Class = Class Expr [ClassVarDec] [SubroutineDec]
 
-data ClassVarDec = ClassVarDec AccessName TypeName [VarName]
+data ClassVarDec = ClassVarDec AccessName TypeName [VarName] deriving Show
 
 data VarDec = VarDec Expr [Expr] deriving Show
 type TypeName = Expr
@@ -31,4 +31,4 @@ data SubroutineBody = SubroutineBody [VarDec] [Stmt] deriving Show
 data SubroutineDec = SubroutineDec Expr Expr Expr [Param] SubroutineBody deriving Show
 data Param = Param Expr Expr deriving Show -- Type Nambe
 
-data Klass = Klass Expr [ClassVarDec] [SubroutineDec]
+data Klass = Klass Expr [ClassVarDec] [SubroutineDec] deriving Show
