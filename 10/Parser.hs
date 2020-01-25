@@ -88,7 +88,7 @@ p `chainl1` op = do {a <- p; rest a}
 
 --
 spaces :: Parser String
-spaces = many $ oneOf " \n\r"
+spaces = many $ oneOf " \n\r\t"
 
 token :: Parser a -> Parser a
 --token p = do { a <- p; spaces ; return a}

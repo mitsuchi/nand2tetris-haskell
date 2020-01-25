@@ -152,13 +152,19 @@ binOps (s:r) = binOp s <|> binOps r
 varName = identifier
 
 term :: Parser Expr
-term = integerConstant 
+term = subroutineCall
+    <|> integerConstant 
     <|> stringConstant
     <|> keywordConstant
+    <|> arrayAccess
     <|> varName
-    <|> betweenExpr "[" expr "]"
     <|> betweenExpr "(" expr ")"
     <|> unaryOpTerm
+
+arrayAccess = do
+    v <- varName 
+    e <- betweenExpr "[" expr "]"
+    pure $ ArrayAccess v e
 
 betweenExpr :: String -> Parser Expr -> String -> Parser Expr
 betweenExpr a e b = do
@@ -182,6 +188,7 @@ subroutineCall =
     <|>
     do
         n <- identifier
+        symbol "." 
         s <- subroutineName
         es <- between "(" expressionList ")"
         pure $ SubroutineCall (Just n) s es

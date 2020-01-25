@@ -9,6 +9,7 @@ data Expr = KeywordConstant String
     | UnaryOp String Expr
     | Between String Expr String
     | SubroutineCall (Maybe Expr) Expr [Expr]
+    | ArrayAccess Expr Expr
     deriving Show
 
 data Stmt = Do Expr
