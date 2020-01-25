@@ -30,3 +30,5 @@ type AccessName = Expr
 data SubroutineBody = SubroutineBody [VarDec] [Stmt] deriving Show
 data SubroutineDec = SubroutineDec Expr Expr Expr [Param] SubroutineBody deriving Show
 data Param = Param Expr Expr deriving Show -- Type Nambe
+
+data Klass = Klass Expr [ClassVarDec] [SubroutineDec]

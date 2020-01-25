@@ -258,3 +258,12 @@ subRoutineDec = do
 
 param :: Parser Param
 param = Param <$> typeKeyword <*> varName
+
+klass :: Parser Klass
+klass = do
+    k <- className
+    symbol "{"
+    cvds <- many classVarDec
+    subs <- many subRoutineDec
+    symbol "}"
+    pure $ Klass k cvds subs
