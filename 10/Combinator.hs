@@ -16,8 +16,8 @@ symbol str = token $ string str
 -- expr :: Parser Expr
 -- expr = equality
 
--- binOp :: String -> Parser (Expr -> Expr -> Expr)
--- binOp str = symbol str >> pure (BinOp str)
+binOp :: String -> Parser (Expr -> Expr -> Expr)
+binOp str = symbol str >> pure (BinOp str)
 
 -- equality :: Parser Expr
 -- equality = 
@@ -133,7 +133,7 @@ symbols :: [String] -> Parser String
 symbols [s] = symbol s
 symbols (s:r) = symbol s <|> symbols r
 
-op = symbols ["+", "-", "*", "/", "&", "|", "<", ">", "="]
+op = ["+", "-", "*", "/", "&", "|", "<", ">", "="]
 
 -- expressionList :: Parser [Expr]
 -- expressionList = manyWith (symbol ",") expr
@@ -148,3 +148,9 @@ stringConstant = do
     symbol "\""
     pure $ StringConstant str
 
+expr :: Parser Expr
+expr = integerConstant `chainl1` (binOps op)
+
+binOps :: [String] -> Parser (Expr -> Expr -> Expr)
+binOps [s] = binOp s
+binOps (s:r) = binOp s <|> binOps r

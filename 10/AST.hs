@@ -5,4 +5,6 @@ data Expr = KeywordConstant String
     | StringConstant String
     | Identifier String
     | Keyword String
+    | BinOp String Expr Expr
     deriving Show
+
