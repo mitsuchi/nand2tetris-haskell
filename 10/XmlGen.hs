@@ -53,3 +53,32 @@ xmlGenExpr (ArrayAccess ary idx) =
     tag "symbol" "[" ++
     tagLn "expression" (xmlGenExpr idx) ++
     tag "symbol" "]" 
+
+xmlGenStmt :: Stmt -> String
+xmlGenStmt (Do expr) = 
+    tagLn "doStatement" $
+        tag "keyword" "do" ++
+        xmlGenExpr expr
+
+xmlGenStmt (Return Nothing) = 
+    tagLn "returnStatement" $
+        tag "keyword" "return" ++
+        tag "symbol" ";"
+
+xmlGenStmt (Return (Just expr)) = 
+    tagLn "returnStatement" $
+        tag "keyword" "return" ++
+        xmlGenExpr expr ++
+        tag "symbol" ";"
+
+xmlGenStmt (While expr stmts) =
+    tagLn "whileStatement" $
+        tag "keyword" "while" ++
+        tag "symbol" "{" ++
+        tagLn "expression" (xmlGenExpr expr) ++
+        tagLn "statements" (
+            foldr (\a s -> xmlGenStmt a ++ s) "" stmts)
+
+
+        
+
