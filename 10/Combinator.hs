@@ -3,6 +3,29 @@ module Combinator where
 import Parser
 import AST
 
+space :: Parser String
+space = cComment <|> cppComment <|> (some $ oneOf " \n\r\t")
+
+spaces = many space
+
+token :: Parser a -> Parser a
+--token p = do { a <- p; spaces ; return a}
+token p = p <* spaces
+
+reserved :: String -> Parser String
+reserved str = token $ string str
+
+parens :: Parser a -> Parser a
+parens m = do
+  reserved "("
+  n <- m
+  reserved ")"
+  pure n
+
+between :: String -> Parser a -> String -> Parser a
+between begin p end = 
+    reserved begin >> p <* reserved end
+
 -- data Expr = IntLit Int
 --     | BinOp String Expr Expr
 --     deriving Show
@@ -82,7 +105,7 @@ varDec = do
 
 typeKeyword :: Parser Expr
 typeKeyword = do
-    k <- reserved "int" <|> reserved "char" <|> reserved "boolean"
+    k <- reserved "int" <|> reserved "char" <|> reserved "boolean" 
     return $ Keyword k
 
 accessKeyword :: Parser Expr
@@ -110,7 +133,7 @@ reserveds (s:r) = reserved s <|> reserveds r
 classVarDec :: Parser ClassVarDec
 classVarDec = do
     access <- reserveds ["static", "field"]
-    type' <- typeKeyword
+    type' <- typeKeyword <|> identifier
     varName1 <- identifier
     varNames <- many (symbol "," >> identifier)
     symbol ";"
@@ -257,7 +280,7 @@ subroutineBody = do
 subroutineDec :: Parser SubroutineDec
 subroutineDec = do
     subRoutineType <- reserveds ["constructor", "function", "method"]
-    returnType <- (Keyword <$> reserved "void") <|> typeKeyword
+    returnType <- (Keyword <$> reserved "void") <|> typeKeyword <|> identifier
     sName <- subroutineName    
     pList <- between "(" (manyWith (symbol ",") param) ")"
     sBody <- subroutineBody

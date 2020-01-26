@@ -13,7 +13,7 @@ main = do
     args <- getArgs
     let file = args !! 0
     content <- readFile file
-    case parse klass content of
+    case parse (spaces >> klass) content of
         Left  e -> print e
         --Right r -> putStrLn $ codeGenAll r os arch
         Right r -> print r

@@ -87,15 +87,6 @@ p `chainl1` op = do {a <- p; rest a}
                  <|> return a
 
 --
-spaces :: Parser String
-spaces = many $ oneOf " \n\r\t"
-
-token :: Parser a -> Parser a
---token p = do { a <- p; spaces ; return a}
-token p = p <* spaces
-
-reserved :: String -> Parser String
-reserved str = token $ string str
 
 number :: Parser Int
 number = do
@@ -103,13 +94,6 @@ number = do
   cs <- some digit
   return $ read (s ++ cs)
 --number = read <$> ((++) <$> (string "-" <|> pure []) <*> some digit)
-
-parens :: Parser a -> Parser a
-parens m = do
-  reserved "("
-  n <- m
-  reserved ")"
-  pure n
 
 test1 = do
     x1 <- anyChar
@@ -130,6 +114,3 @@ someWith a b = do
 manyWith :: Parser a -> Parser b -> Parser [b]
 manyWith a b = someWith a b <|> pure []
 
-between :: String -> Parser a -> String -> Parser a
-between begin p end = 
-    reserved begin >> p <* reserved end
