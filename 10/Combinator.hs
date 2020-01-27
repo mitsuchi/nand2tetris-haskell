@@ -258,7 +258,9 @@ letStatement = do
     symbol "="
     e <- expr
     symbol ";"
-    pure $ Let v index e
+    case index of
+        Just indexExpr -> pure $ Let (ArrayAccess v indexExpr) e
+        Nothing        -> pure $ Let v e
 
 statements = many statement
 

@@ -16,7 +16,7 @@ data Stmt = Do Expr
     | Return (Maybe Expr)
     | While Expr [Stmt]
     | If Expr [Stmt] (Maybe [Stmt])
-    | Let Expr (Maybe Expr) Expr
+    | Let Expr Expr
     deriving Show
 
 --data Class = Class Expr [ClassVarDec] [SubroutineDec]
