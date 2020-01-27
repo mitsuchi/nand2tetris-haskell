@@ -14,27 +14,27 @@ tagLn tagName elmt =
 
 xmlGenVarDec :: VarDec -> String
 xmlGenVarDec (VarDec typeName identifiers) = 
-    "<varDec>\n" ++
-    "<keyword> var </keyword>\n" ++
-    xmlGenExpr typeName ++
-    foldr (\i z -> tag "symbol" "," ++ xmlGenExpr i ++ z) "" identifiers ++
-    tag "symbol" ";"
+    tagLn "varDec" $
+        "<keyword> var </keyword>\n" ++
+        xmlGenExpr typeName ++
+        intercalate (tag "symbol" ",") (map xmlGenExpr identifiers) ++
+        tag "symbol" ";"
 
 
 xmlGenExpr :: Expr -> String
 xmlGenExpr (Identifier i) = tag "identifier" i
 xmlGenExpr (Keyword k) = tag "keyword" k
 xmlGenExpr (KeywordConstant k) = tag "keyword" k
-xmlGenExpr (IntegerConstant i) = tag "integerConstant" (show i)
+xmlGenExpr (IntegerConstant i) = tagLn "term" $ tag "integerConstant" (show i)
+xmlGenExpr (StringConstant s) = tag "stringConstant" s
 xmlGenExpr (Between begin e end) =
     tag "symbol" begin ++
     tagLn "expression" (xmlGenExpr e) ++
     tag "symbol" end
 xmlGenExpr (BinOp op e1 e2) = 
-    tagLn "expression" $
-        tagLn "term" (xmlGenExpr e1) ++ 
-        tag "symbol" op ++
-        tagLn "term" (xmlGenExpr e2)
+    tagLn "term" (xmlGenExpr e1) ++ 
+    tag "symbol" op ++
+    tagLn "term" (xmlGenExpr e2)
 xmlGenExpr (UnaryOp op e) =
     tagLn "expression" $
         tagLn "term" $
@@ -44,16 +44,17 @@ xmlGenExpr (SubroutineCall maybeClass func args) =
     let c = case maybeClass of
                 Just cls -> xmlGenExpr cls ++ tag "symbol" "."
                 Nothing -> ""
-    in tagLn "expression" $
-            tagLn "term" $
-                c ++ xmlGenExpr func ++ 
-                tagLn "expressionList" (
-                    foldr (\a s -> xmlGenExpr a ++ s) "" args)
+    in tagLn "term" $
+            c ++ xmlGenExpr func ++ 
+            tag "symbol" "(" ++
+            tagLn "expressionList" (foldr (\a s -> tagLn "expression" (tagLn "term" (xmlGenExpr a)) ++ s) "" args) ++
+            tag "symbol" ")"
+
 xmlGenExpr (ArrayAccess ary idx) =
     xmlGenExpr ary ++
     tag "symbol" "[" ++
-    tagLn "expression" (xmlGenExpr idx) ++
-    tag "symbol" "]" 
+    tagLn "expression" (tagLn "term" (xmlGenExpr idx)) ++
+    tag "symbol" "]"
 
 xmlGenStmt :: Stmt -> String
 xmlGenStmt (Do expr) = 
@@ -75,10 +76,12 @@ xmlGenStmt (Return (Just expr)) =
 xmlGenStmt (While expr stmts) =
     tagLn "whileStatement" $
         tag "keyword" "while" ++
+        tag "symbol" "(" ++
+        xmlGenExpr expr ++
+        tag "symbol" ")" ++
         tag "symbol" "{" ++
-        tagLn "expression" (xmlGenExpr expr) ++
-        tagLn "statements" (
-            foldr (\a s -> xmlGenStmt a ++ s) "" stmts)
+        tagLn "statements" (foldr (\a s -> xmlGenStmt a ++ s) "" stmts) ++
+        tag "symbol" "}"
 
 -- If Expr [Stmt] (Maybe [Stmt])            
 xmlGenStmt (If expr thenStmts maybeElseStmts) = 
@@ -100,11 +103,12 @@ xmlGenStmt (If expr thenStmts maybeElseStmts) =
 
 -- Let Expr (Maybe Expr) Expr
 xmlGenStmt (Let varExpr valExpr) = 
-    tag "keyword" "let" ++
-    xmlGenExpr varExpr ++
-    tag "symbol" "=" ++
-    xmlGenExpr valExpr ++
-    tag "symbol" ";"
+    tagLn "letStatement" $
+        tag "keyword" "let" ++
+        xmlGenExpr varExpr ++
+        tag "symbol" "=" ++
+        tagLn "expression" (xmlGenExpr valExpr) ++
+        tag "symbol" ";"
 
 -- static boolean test; 
 -- data ClassVarDec = ClassVarDec AccessName TypeName [VarName]
@@ -139,9 +143,7 @@ xmlGenSubroutineDec (SubroutineDec funcType returnType funcName params funcBody)
         tag "symbol" "(" ++
         tagLn "parameterList" (foldr (\a s -> xmlGenParam a ++ s) "" params) ++
         tag "symbol" ")" ++
-        tag "symbol" "{" ++
-        xmlGenSubroutineBody funcBody ++ 
-        tag "symbol" "}"
+        xmlGenSubroutineBody funcBody
 
 -- data Klass = Klass Expr [ClassVarDec] [SubroutineDec]
 xmlGenClass (Klass className classVarDecs subroutineDecs) =

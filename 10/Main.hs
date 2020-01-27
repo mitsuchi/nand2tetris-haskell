@@ -7,15 +7,17 @@ import System.IO
 
 import Parser
 import Combinator
---import XmlGen
+import XmlGen
 
 main = do
     args <- getArgs
     let file = args !! 0
     content <- readFile file
     case parse (spaces >> klass) content of
-        Left  e -> print e
-        --Right r -> putStrLn $ codeGenAll r os arch
-        Right r -> print r
+        Left e -> do
+            putStrLn "error! --"
+            putStrLn e
+        Right r -> do
+            putStrLn $ xmlGenClass r
     
     
