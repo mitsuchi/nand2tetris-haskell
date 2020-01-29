@@ -1,20 +1,23 @@
 module AST where
 
+data Name = Keyword String
+    | Identifier String
+    deriving Show
+
 data Expr = Expr Term [(String, Term)]
     deriving Show
 
-data Term = KeywordConstant String 
+data Term = KeywordConstant Name 
     | IntegerConstant Int
     | StringConstant String
-    | TermIdentifier Identifier
-    | Keyword String
+    | TermIdentifier Name
     | UnaryOp String Term
-    | SubroutineCall (Maybe Term) Term [Expr]
-    | ArrayAccess Term Expr
+    | TermSubroutineCall SubroutineCall
+    | ArrayAccess Name Expr
     | Paren Expr
     deriving Show
 
-data Stmt = Do Term
+data Stmt = Do SubroutineCall
     | Return (Maybe Expr)
     | While Expr [Stmt]
     | If Expr [Stmt] (Maybe [Stmt])
@@ -27,15 +30,16 @@ type Stmts = [Stmt]
 
 data ClassVarDec = ClassVarDec AccessName TypeName [VarName] deriving Show
 
-data VarDec = VarDec Term [Term] deriving Show
-type TypeName = Term
-type VarName = Term
-type AccessName = Term
+data VarDec = VarDec Name [Name] deriving Show
+type TypeName = Name
+type VarName = Name
+type AccessName = Name
 
 data SubroutineBody = SubroutineBody [VarDec] [Stmt] deriving Show
-data SubroutineDec = SubroutineDec Term Term Identifier [Param] SubroutineBody deriving Show
-data Param = Param Term Term deriving Show -- Type Nambe
+data SubroutineDec = SubroutineDec Name Name Name [Param] SubroutineBody deriving Show
+data Param = Param Name Name deriving Show -- Type Nambe
 
-data Klass = Klass Identifier [ClassVarDec] [SubroutineDec] deriving Show
+data Klass = Klass Name [ClassVarDec] [SubroutineDec] deriving Show
 
-data Identifier = Identifier String deriving Show
+--                                   className   funcName args
+data SubroutineCall = SubroutineCall (Maybe Name) Name [Expr] deriving Show

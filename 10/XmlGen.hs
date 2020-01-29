@@ -5,58 +5,64 @@ import Combinator
 import Data.List
 
 tag :: String -> String -> String
-tag tagName elmt = 
-    "<" ++ tagName ++ "> " ++ elmt ++ " </" ++ tagName ++ ">\n"
+tag tagName elmt = "<" ++ tagName ++ "> " ++ escape(elmt) ++ " </" ++ tagName ++ ">\n"
+
+escape :: String -> String
+escape "<" = "&lt;"
+escape ">" = "&gt;"
+escape x   = x
 
 tagLn :: String -> String -> String
 tagLn tagName elmt = 
     "<" ++ tagName ++ ">\n" ++ elmt ++ "</" ++ tagName ++ ">\n"
 
+xmlGenName :: Name -> String
+xmlGenName (Identifier i) = tag "identifier" i
+xmlGenName (Keyword k) = tag "keyword" k
+
 xmlGenExpr :: Expr -> String
 xmlGenExpr (Expr t ts) = tagLn "expression" $ 
                             xmlGenTerm t ++
-                            intercalate "" (map (\(s, t) -> tag "op" s ++ xmlGenTerm t) ts)
+                            intercalate "" (map (\(s, t) -> tag "symbol" s ++ xmlGenTerm t) ts)
 
 xmlGenTerm :: Term -> String
 xmlGenTerm (IntegerConstant i) = tagLn "term" $ tag "integerConstant" (show i)
-xmlGenTerm (TermIdentifier i) = tagLn "term" $ xmlGenIdentifier i
-xmlGenTerm (KeywordConstant k) = tagLn "term" $ tag "keyword" k
+xmlGenTerm (TermIdentifier i) = tagLn "term" $ xmlGenName i
+xmlGenTerm (KeywordConstant k) = tagLn "term" $ xmlGenName k
 xmlGenTerm (StringConstant s) = tagLn "term" $ tag "stringConstant" s
 xmlGenTerm (UnaryOp op t) =
         tagLn "term" $
             tag "symbol" op ++
             xmlGenTerm t
 xmlGenTerm (ArrayAccess ary idx) =
-    xmlGenTerm ary ++
-    tag "symbol" "[" ++
-    xmlGenExpr idx ++
-    tag "symbol" "]"
+    tagLn "term" $
+        xmlGenName ary ++
+        tag "symbol" "[" ++
+        xmlGenExpr idx ++
+        tag "symbol" "]"
 xmlGenTerm (Paren e) =
     tag "symbol" "(" ++
     xmlGenExpr e ++
     tag "symbol" ")"
-xmlGenTerm (SubroutineCall maybeClass func args) =
+xmlGenTerm (TermSubroutineCall subCall) =
+    tagLn "term" $ xmlGenSubroutineCall subCall
+
+xmlGenSubroutineCall (SubroutineCall maybeClass func args) =
     let c = case maybeClass of
-                Just cls -> xmlGenTerm cls ++ tag "symbol" "."
-                Nothing -> ""
-    in tagLn "term" $
-            c ++ xmlGenTerm func ++ 
-            tag "symbol" "(" ++
-            tagLn "expressionList" (foldr (\a s -> xmlGenExpr a ++ s) "" args) ++
-            tag "symbol" ")"
-
-
-xmlGenIdentifier :: Identifier -> String
-xmlGenIdentifier (Identifier i) = tag "identifier" i
-
-xmlGenKeyword (Keyword k) = tag "keyword" k
+            Just cls -> xmlGenName cls ++ tag "symbol" "."
+            Nothing -> ""
+    in 
+        c ++ xmlGenName func ++ 
+        tag "symbol" "(" ++
+        tagLn "expressionList" (intercalate (tag "symbol" ",") (map xmlGenExpr args)) ++
+        tag "symbol" ")"
 
 xmlGenStmt :: Stmt -> String
-xmlGenStmt (Do term) = 
+xmlGenStmt (Do subCall) = 
     tagLn "doStatement" $
         tag "keyword" "do" ++
-        xmlGenTerm term
-
+        xmlGenSubroutineCall subCall ++
+        tag "symbol" ";"
 xmlGenStmt (Return Nothing) = 
     tagLn "returnStatement" $
         tag "keyword" "return" ++
@@ -90,16 +96,20 @@ xmlGenStmt (If expr thenStmts maybeElseStmts) =
         tag "keyword" "if" ++
         tag "symbol" "(" ++
         xmlGenExpr expr ++
-        tag "symbol" "(" ++
+        tag "symbol" ")" ++
         tag "symbol" "{" ++
         xmlGenStmts thenStmts ++
-        tag "symbol" "}"
+        tag "symbol" "}" ++
+        elseStmtsXml
 
 -- Let Term Expr
-xmlGenStmt (Let varTerm valExpr) = 
-    tagLn "letStatement" $
+xmlGenStmt (Let varTerm valExpr) =
+    let varXml = case varTerm of
+                    ArrayAccess v indexExpr -> xmlGenName v ++ tag "symbol" "[" ++ xmlGenExpr indexExpr ++ tag "symbol" "]"
+                    TermIdentifier i -> xmlGenName i
+    in tagLn "letStatement" $
         tag "keyword" "let" ++
-        xmlGenTerm varTerm ++
+        varXml ++
         tag "symbol" "=" ++
         xmlGenExpr valExpr ++
         tag "symbol" ";"
@@ -110,9 +120,9 @@ xmlGenStmts stmts = tagLn "statements" (foldr (\a s -> xmlGenStmt a ++ s) "" stm
 -- data ClassVarDec = ClassVarDec Term Term [Term] deriving Show
 xmlGenClassVarDec (ClassVarDec accessName typeName varNames) =
     tagLn "classVarDec" $
-        xmlGenTerm accessName ++
-        xmlGenTerm typeName ++
-        intercalate (tag "symbol" ",") (map xmlGenTerm varNames) ++
+        xmlGenName accessName ++
+        xmlGenName typeName ++
+        intercalate (tag "symbol" ",") (map xmlGenName varNames) ++
         tag "symbol" ";"
 
 -- data SubroutineBody = SubroutineBody [VarDec] [Stmt] deriving Show
@@ -128,24 +138,24 @@ xmlGenVarDec :: VarDec -> String
 xmlGenVarDec (VarDec typeName termIdentifiers) = 
     tagLn "varDec" $
         tag "keyword" "var" ++
-        xmlGenTerm typeName ++
-        intercalate (tag "symbol" ",") (map xmlGenTerm termIdentifiers) ++
+        xmlGenName typeName ++
+        intercalate (tag "symbol" ",") (map xmlGenName termIdentifiers) ++
         tag "symbol" ";"
 
 -- Param Term Term
 xmlGenParam :: Param -> String
-xmlGenParam (Param typeTerm valTerm) = 
-    xmlGenTerm typeTerm ++
-    xmlGenTerm valTerm
+xmlGenParam (Param typeName valName) = 
+    xmlGenName typeName ++
+    xmlGenName valName
 
 -- data SubroutineDec = SubroutineDec Term Term Identifier [Param] SubroutineBody deriving Show    
 xmlGenSubroutineDec (SubroutineDec funcType returnType funcName params funcBody) = 
     tagLn "subroutineDec" $
-        xmlGenTerm funcType ++
-        xmlGenTerm returnType ++
-        xmlGenIdentifier funcName ++
+        xmlGenName funcType ++
+        xmlGenName returnType ++
+        xmlGenName funcName ++
         tag "symbol" "(" ++
-        tagLn "parameterList" (foldr (\a s -> xmlGenParam a ++ s) "" params) ++
+        tagLn "parameterList" (intercalate (tag "symbol" ",") (map xmlGenParam params)) ++
         tag "symbol" ")" ++
         xmlGenSubroutineBody funcBody
 
@@ -153,7 +163,7 @@ xmlGenSubroutineDec (SubroutineDec funcType returnType funcName params funcBody)
 xmlGenClass (Klass className classVarDecs subroutineDecs) =
     tagLn "class" $
         tag "keyword" "class" ++
-        xmlGenIdentifier className ++
+        xmlGenName className ++
         tag "symbol" "{" ++
         (foldr (\a s -> xmlGenClassVarDec a ++ s) "" classVarDecs) ++
         (foldr (\a s -> xmlGenSubroutineDec a ++ s) "" subroutineDecs) ++

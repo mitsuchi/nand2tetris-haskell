@@ -60,14 +60,17 @@ symbols (s:r) = symbol s <|> symbols r
 op = ["+", "-", "*", "/", "&", "|", "<", ">", "="]
 
 term :: Parser Term
-term = subroutineCall
+term = (TermSubroutineCall <$> subroutineCall)
     <|> integerConstant
     <|> stringConstant
     <|> keywordConstant
-    <|> arrayAccess    
+    <|> arrayAccess        
+    <|> termIdentifier
     <|> paren
-    <|> varName
     <|> unaryOp
+
+termIdentifier :: Parser Term
+termIdentifier = TermIdentifier <$> identifier
 
 paren :: Parser Term
 paren = do
@@ -85,9 +88,9 @@ integerConstant = IntegerConstant <$> token number
 keywordConstant :: Parser Term
 keywordConstant = do
     k <- reserveds ["true", "false", "nil", "this"]
-    return $ KeywordConstant k
+    return $ KeywordConstant (Keyword k)
 
-varName = TermIdentifier <$> identifier
+varName = identifier
 
 arrayAccess :: Parser Term
 arrayAccess = do
@@ -95,7 +98,7 @@ arrayAccess = do
     e <- between "[" expr "]"
     pure $ ArrayAccess v e
 
-identifier :: Parser Identifier
+identifier :: Parser Name
 identifier = do
     f <- letter <|> char '_'
     r <- many (letter <|> char '_' <|> digit) <* spaces
@@ -107,19 +110,19 @@ unaryOp = do
     t <- term
     pure $ UnaryOp u t
 
-subroutineCall :: Parser Term
+subroutineCall :: Parser SubroutineCall
 subroutineCall = 
     do
         s <- subroutineName
         es <- between "(" expressionList ")"
-        pure $ SubroutineCall Nothing (TermIdentifier s) es
+        pure $ (SubroutineCall Nothing s es)
     <|>
     do
         n <- identifier
         symbol "." 
         s <- subroutineName
         es <- between "(" expressionList ")"
-        pure $ SubroutineCall (Just (TermIdentifier n)) (TermIdentifier s) es
+        pure $ (SubroutineCall (Just n) s es)
 
 className = identifier
 subroutineName = identifier
@@ -176,7 +179,7 @@ letStatement = do
     symbol ";"
     case index of
         Just indexExpr -> pure $ Let (ArrayAccess v indexExpr) e
-        Nothing        -> pure $ Let v e
+        Nothing        -> pure $ Let (TermIdentifier v) e
 
 subroutineBody :: Parser SubroutineBody
 subroutineBody = do
@@ -189,23 +192,23 @@ subroutineBody = do
 varDec :: Parser VarDec
 varDec = do
     reserved "var"
-    type' <- typeKeyword <|> (TermIdentifier <$> identifier)
-    varName1 <- TermIdentifier <$> identifier
-    varNames <- many (symbol "," >> TermIdentifier <$> identifier)
+    type' <- typeKeyword <|> identifier
+    varName1 <- identifier
+    varNames <- many (symbol "," >> identifier)
     symbol ";"
     return $ VarDec type' $ varName1 : varNames
 
-typeKeyword :: Parser Term
+typeKeyword :: Parser Name
 typeKeyword = do
     k <- reserved "int" <|> reserved "char" <|> reserved "boolean" 
     return $ Keyword k
 
-accessKeyword :: Parser Term
+accessKeyword :: Parser Name
 accessKeyword = do
     k <- reserveds ["field", "static"]
     return $ Keyword k
 
-keyword :: Parser Term
+keyword :: Parser Name
 keyword = do
     k <- reserveds ["class", "constructor", "function", "method", "field", "static", "var",
             "int", "char", "boolean", "void", "true", "false", "null", "this", "let", "do",
@@ -215,16 +218,16 @@ keyword = do
 classVarDec :: Parser ClassVarDec
 classVarDec = do
     access <- reserveds ["static", "field"]
-    type' <- typeKeyword <|> (TermIdentifier <$> identifier)
-    varName1 <- TermIdentifier <$> identifier
-    varNames <- many (symbol "," >> TermIdentifier <$> identifier)
+    type' <- typeKeyword <|> identifier
+    varName1 <- identifier
+    varNames <- many (symbol "," >> identifier)
     symbol ";"
     return $ ClassVarDec (Keyword access) type' $ varName1 : varNames
 
 subroutineDec :: Parser SubroutineDec
 subroutineDec = do
     subRoutineType <- reserveds ["constructor", "function", "method"]
-    returnType <- (Keyword <$> reserved "void") <|> typeKeyword <|> (TermIdentifier <$> identifier)
+    returnType <- (Keyword <$> reserved "void") <|> typeKeyword <|> identifier
     sName <- subroutineName    
     pList <- between "(" (manyWith (symbol ",") param) ")"
     sBody <- subroutineBody
