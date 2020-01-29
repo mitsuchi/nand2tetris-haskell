@@ -1,35 +1,39 @@
 module AST where
 
-data Expr = KeywordConstant String 
-    | IntegerConstant Int
-    | StringConstant String
-    | Identifier String
-    | Keyword String
-    | BinOp String Expr Expr
-    | UnaryOp String Expr
-    | Between String Expr String
-    | SubroutineCall (Maybe Expr) Expr [Expr]
-    | ArrayAccess Expr Expr
+data Expr = Expr Term [(String, Term)]
     deriving Show
 
-data Stmt = Do Expr
+data Term = KeywordConstant String 
+    | IntegerConstant Int
+    | StringConstant String
+    | TermIdentifier Identifier
+    | Keyword String
+    | UnaryOp String Term
+    | SubroutineCall (Maybe Term) Term [Expr]
+    | ArrayAccess Term Expr
+    | Paren Expr
+    deriving Show
+
+data Stmt = Do Term
     | Return (Maybe Expr)
     | While Expr [Stmt]
     | If Expr [Stmt] (Maybe [Stmt])
-    | Let Expr Expr
+    | Let Term Expr
     deriving Show
 
 --data Class = Class Expr [ClassVarDec] [SubroutineDec]
 
 data ClassVarDec = ClassVarDec AccessName TypeName [VarName] deriving Show
 
-data VarDec = VarDec Expr [Expr] deriving Show
-type TypeName = Expr
-type VarName = Expr
-type AccessName = Expr
+data VarDec = VarDec Term [Term] deriving Show
+type TypeName = Term
+type VarName = Term
+type AccessName = Term
 
 data SubroutineBody = SubroutineBody [VarDec] [Stmt] deriving Show
-data SubroutineDec = SubroutineDec Expr Expr Expr [Param] SubroutineBody deriving Show
-data Param = Param Expr Expr deriving Show -- Type Nambe
+data SubroutineDec = SubroutineDec Term Term Identifier [Param] SubroutineBody deriving Show
+data Param = Param Term Term deriving Show -- Type Nambe
 
-data Klass = Klass Expr [ClassVarDec] [SubroutineDec] deriving Show
+data Klass = Klass Identifier [ClassVarDec] [SubroutineDec] deriving Show
+
+data Identifier = Identifier String deriving Show
