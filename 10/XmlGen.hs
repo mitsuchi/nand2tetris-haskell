@@ -10,6 +10,7 @@ tag tagName elmt = "<" ++ tagName ++ "> " ++ escape(elmt) ++ " </" ++ tagName ++
 escape :: String -> String
 escape "<" = "&lt;"
 escape ">" = "&gt;"
+escape "&" = "&amp;"
 escape x   = x
 
 tagLn :: String -> String -> String
@@ -41,9 +42,10 @@ xmlGenTerm (ArrayAccess ary idx) =
         xmlGenExpr idx ++
         tag "symbol" "]"
 xmlGenTerm (Paren e) =
-    tag "symbol" "(" ++
-    xmlGenExpr e ++
-    tag "symbol" ")"
+    tagLn "term" $
+        tag "symbol" "(" ++
+        xmlGenExpr e ++
+        tag "symbol" ")"
 xmlGenTerm (TermSubroutineCall subCall) =
     tagLn "term" $ xmlGenSubroutineCall subCall
 

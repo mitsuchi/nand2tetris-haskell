@@ -90,9 +90,8 @@ p `chainl1` op = do {a <- p; rest a}
 
 number :: Parser Int
 number = do
-  s <- string "-" <|> return []
   cs <- some digit
-  return $ read (s ++ cs)
+  return $ read cs
 --number = read <$> ((++) <$> (string "-" <|> pure []) <*> some digit)
 
 test1 = do

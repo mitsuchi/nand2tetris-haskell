@@ -87,7 +87,7 @@ integerConstant = IntegerConstant <$> token number
 
 keywordConstant :: Parser Term
 keywordConstant = do
-    k <- reserveds ["true", "false", "nil", "this"]
+    k <- reserveds ["true", "false", "null", "this"]
     return $ KeywordConstant (Keyword k)
 
 varName = identifier
