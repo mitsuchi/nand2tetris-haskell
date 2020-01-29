@@ -18,9 +18,13 @@ main = do
             putStrLn "error! --"
             putStrLn e
         Right r -> do
-            --putStrLn $ xmlGenClass r
+            putStrLn $ xmlGenClass r
             print r
     
-px p program = case parse p program of
+pexpr program = case parse expr program of
     Right r -> putStrLn $ xmlGenExpr r
     Left l -> putStrLn "error"
+
+pclass program = case parse klass program of
+    Right r -> putStrLn $ xmlGenClass r
+    Left l -> putStrLn "error"        

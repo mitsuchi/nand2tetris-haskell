@@ -21,6 +21,8 @@ data Stmt = Do Term
     | Let Term Expr
     deriving Show
 
+type Stmts = [Stmt]
+
 --data Class = Class Expr [ClassVarDec] [SubroutineDec]
 
 data ClassVarDec = ClassVarDec AccessName TypeName [VarName] deriving Show
