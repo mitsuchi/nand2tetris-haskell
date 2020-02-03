@@ -59,4 +59,4 @@ compileSubroutineDec :: String -> SymbolTable -> SubroutineDec -> String
 compileSubroutineDec classStr classSymbols subr@(SubroutineDec funcType returnType funcName params funcBody) = 
     let subroutineSymbols = makeSymbolTableForSubroutine subr
     in "function " ++ classStr ++ "." ++ (stringOf funcName) ++ " " ++ (show $ numLocalVars funcBody) ++ "\n"
-    where numLocalVars (SubroutineBody varDecs stmts) = length varDecs
+    where numLocalVars (SubroutineBody varDecs stmts) = foldr (\(VarDec _ vars) total -> length vars + total) 0 varDecs
