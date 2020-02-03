@@ -9,20 +9,27 @@ data SymbolRow = SymbolRow {typeName :: String, kind :: String, index :: Int} de
 varCount :: SymbolTable -> String -> Int
 varCount st k = M.foldr (\a b -> if kind a == k then b+1 else b) 0 st
 
-kindOf :: SymbolTable -> String -> Maybe String
-kindOf st name = do 
-    row <- M.lookup name st
+kindOf :: SymbolEnv -> String -> Maybe String
+kindOf se name = do 
+    row <- lookupEnv name se
     return $ (kind row)
 
-typeOf :: SymbolTable -> String -> Maybe String
-typeOf st name = do 
-    row <- M.lookup name st
+typeOf :: SymbolEnv -> String -> Maybe String
+typeOf se name = do 
+    row <- lookupEnv name se
     return $ (typeName row)
 
-indexOf :: SymbolTable -> String -> Maybe Int
-indexOf st name = do 
-    row <- M.lookup name st
+indexOf :: SymbolEnv -> String -> Maybe Int
+indexOf se name = do 
+    row <- lookupEnv name se
     return $ (index row)
+
+lookupEnv :: String -> SymbolEnv -> Maybe SymbolRow
+lookupEnv name se = case M.lookup name (table se) of
+    Just row -> Just row
+    Nothing -> case outer se of
+        Just outerSymbolEnv -> lookupEnv name outerSymbolEnv
+        Nothing -> Nothing
 
 define :: SymbolTable -> String -> String -> String -> Int -> SymbolTable
 define st name typeName kind index = 

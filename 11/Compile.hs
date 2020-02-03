@@ -21,10 +21,13 @@ addToTable (ClassVarDec kind typeName vars) table =
         k = stringOf kind
     in foldr (\v st -> define st (stringOf v) t k (varCount st k)) table vars
 
-makeSymbolTableForSubroutine :: SubroutineDec -> SymbolTable
-makeSymbolTableForSubroutine (SubroutineDec _ _ _ params subroutineBody) =
+makeSymbolTableForSubroutine :: SubroutineDec -> String -> SymbolTable
+makeSymbolTableForSubroutine (SubroutineDec accessName _ _ params subroutineBody) classStr =
     let SubroutineBody varDecs stmts = subroutineBody;
-        st = makeSymbolTableForSubroutine' varDecs M.empty
+        initialTable = case (stringOf accessName) of
+            "function" -> M.empty
+            "method" -> M.fromList [("this", SymbolRow {typeName=classStr, kind="argument", index=0})]
+        st = makeSymbolTableForSubroutine' varDecs initialTable
     in makeSymbolTableForSubroutineArgs params st
 
 makeSymbolTableForSubroutine' :: [VarDec] -> SymbolTable -> SymbolTable
@@ -52,11 +55,78 @@ addParamToTable (Param typeName varName) table =
 
 compileClass :: Klass -> String
 compileClass cls@(Klass className classVarDecs subroutineDecs) =
-    let stClass = makeSymbolTableForClass cls
-    in intercalate "" (map (compileSubroutineDec (stringOf className) stClass) subroutineDecs)
+    let stClass = makeSymbolTableForClass cls;
+        classSymbolEnv = SymbolEnv { table = stClass, outer = Nothing }
+    in intercalate "" (map (compileSubroutineDec (stringOf className) classSymbolEnv) subroutineDecs)
 
-compileSubroutineDec :: String -> SymbolTable -> SubroutineDec -> String
+compileSubroutineDec :: String -> SymbolEnv -> SubroutineDec -> String
 compileSubroutineDec classStr classSymbols subr@(SubroutineDec funcType returnType funcName params funcBody) = 
-    let subroutineSymbols = makeSymbolTableForSubroutine subr
-    in "function " ++ classStr ++ "." ++ (stringOf funcName) ++ " " ++ (show $ numLocalVars funcBody) ++ "\n"
+    let subroutineSymbols = makeSymbolTableForSubroutine subr classStr;
+        SubroutineBody varDecs stmts = funcBody;
+        symbolEnv = SymbolEnv { table = subroutineSymbols, outer = Just classSymbols }
+    in "function " ++ classStr ++ "." ++ (stringOf funcName) ++ " " ++ (show $ numLocalVars funcBody) ++ "\n" ++
+       intercalate "" (map (compileStmt symbolEnv) stmts)
     where numLocalVars (SubroutineBody varDecs stmts) = foldr (\(VarDec _ vars) total -> length vars + total) 0 varDecs
+
+compileStmt :: SymbolEnv -> Stmt -> String
+compileStmt symbols (Let varTerm valExpr) = 
+    let varVM = case varTerm of
+                    ArrayAccess v indexExpr -> ""
+                    ti@(TermIdentifier i) -> writePop (compileVal symbols ti)
+    in compileExpr symbols valExpr ++ varVM
+
+compileVal ::  SymbolEnv -> Term -> String
+compileVal symbols (TermIdentifier ti) = valToStack symbols (stringOf ti)
+compileVal symbols (IntegerConstant i) = "constant " ++ show i
+
+valToStack :: SymbolEnv -> String -> String
+valToStack symbols str =
+    let region = case kindOf symbols str of
+                        Just kind -> case kind of
+                                        "field" -> "this"
+                                        x       -> x
+                        Nothing -> "error" ;
+        index = case indexOf symbols str of
+                    Just i -> show i
+                    Nothing -> "error" 
+    in region ++ " " ++ index
+
+writePop :: String -> String
+writePop name = "pop " ++ name ++ "\n"
+
+compileExpr :: SymbolEnv -> Expr -> String
+compileExpr symbols (Expr t ts) = compileTerm symbols t ++ compileArithTerms symbols ts 
+
+compileTerm :: SymbolEnv -> Term -> String
+compileTerm symbols ii@(IntegerConstant i) = writePush (compileVal symbols ii)
+compileTerm symbols ti@(TermIdentifier i) = writePush (compileVal symbols ti)
+compileTerm symbols (Paren e) = compileExpr symbols e
+compileTerm symbols (TermSubroutineCall subCall) = compileSubroutineCall symbols subCall
+
+writePush :: String -> String
+writePush name = "push " ++ name ++ "\n"
+
+compileArithTerms :: SymbolEnv -> [(String, Term)] -> String
+compileArithTerms symbols [] = ""
+compileArithTerms symbols ((arithSymbol, term):ats) = 
+    compileTerm symbols term ++
+    compileArithTerms symbols ats ++
+    compileArith arithSymbol
+
+compileArith :: String -> String
+compileArith "+" = "add\n"
+compileArith "-" = "sub\n"
+compileArith "*" = "call Math.multiply 2\n"
+
+compileSubroutineCall symbols (SubroutineCall maybeClass func args) =
+    let classStr = case maybeClass of
+                        Just cls -> stringOf cls
+                        Nothing -> case typeOf symbols "this" of
+                                    Just cls' -> cls'
+                                    Nothing -> "error";
+        pushThis = case maybeClass of
+                        Just cls -> ""
+                        Nothing -> "push argument 0\n"
+    in  pushThis ++ 
+        intercalate "" (map (compileExpr symbols) args) ++
+        "call " ++ classStr ++ "." ++ stringOf func ++ " " ++ (show $ length args + 1) ++ "\n"
