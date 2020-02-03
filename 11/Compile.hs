@@ -2,6 +2,7 @@ module Compile where
 
 import AST
 import Combinator
+import Data.Char
 import Data.List
 import qualified Data.Map as M
 import SymbolTable
@@ -19,7 +20,7 @@ addToTable :: ClassVarDec -> SymbolTable -> SymbolTable
 addToTable (ClassVarDec kind typeName vars) table =
     let t = stringOf typeName;
         k = stringOf kind
-    in foldr (\v st -> define st (stringOf v) t k (varCount st k)) table vars
+    in foldr (\v st -> define st (stringOf v) t k (varCount st k)) table (reverse vars)
 
 makeSymbolTableForSubroutine :: SubroutineDec -> String -> SymbolTable
 makeSymbolTableForSubroutine (SubroutineDec accessName _ _ params subroutineBody) classStr =
@@ -39,7 +40,7 @@ addVarDecToTable :: VarDec -> SymbolTable -> SymbolTable
 addVarDecToTable (VarDec typeName vars) table =
     let t = stringOf typeName;
         k = "var"
-    in foldr (\v st -> define st (stringOf v) t k (varCount st k)) table vars
+    in foldr (\v st -> define st (stringOf v) t k (varCount st k)) table (reverse vars)
 
 makeSymbolTableForSubroutineArgs :: [Param] -> SymbolTable -> SymbolTable
 makeSymbolTableForSubroutineArgs [] table = table
@@ -74,6 +75,8 @@ compileStmt symbols (Let varTerm valExpr) =
                     ArrayAccess v indexExpr -> ""
                     ti@(TermIdentifier i) -> writePop (compileVal symbols ti)
     in compileExpr symbols valExpr ++ varVM
+compileStmt symbols (Do subCall) = compileSubroutineCall symbols subCall 
+compileStmt symbols (Return Nothing) = "pop temp 0\npush constant 0\nreturn\n"
 
 compileVal ::  SymbolEnv -> Term -> String
 compileVal symbols (TermIdentifier ti) = valToStack symbols (stringOf ti)
@@ -84,6 +87,7 @@ valToStack symbols str =
     let region = case kindOf symbols str of
                         Just kind -> case kind of
                                         "field" -> "this"
+                                        "var"   -> "local"
                                         x       -> x
                         Nothing -> "error" ;
         index = case indexOf symbols str of
@@ -102,6 +106,11 @@ compileTerm symbols ii@(IntegerConstant i) = writePush (compileVal symbols ii)
 compileTerm symbols ti@(TermIdentifier i) = writePush (compileVal symbols ti)
 compileTerm symbols (Paren e) = compileExpr symbols e
 compileTerm symbols (TermSubroutineCall subCall) = compileSubroutineCall symbols subCall
+compileTerm symbols (StringConstant s) = 
+    "push constant " ++ (show $ length s) ++ "\n" ++
+    "call String.new 1\n" ++
+    intercalate "" (map (\c -> "push constant " ++ (show $ ord c) ++ "\ncall String.appendChar 2\n") s)
+
 
 writePush :: String -> String
 writePush name = "push " ++ name ++ "\n"
@@ -124,9 +133,9 @@ compileSubroutineCall symbols (SubroutineCall maybeClass func args) =
                         Nothing -> case typeOf symbols "this" of
                                     Just cls' -> cls'
                                     Nothing -> "error";
-        pushThis = case maybeClass of
-                        Just cls -> ""
-                        Nothing -> "push argument 0\n"
+        (argOffset, pushThis) = case maybeClass of
+                        Just cls -> (0, "")
+                        Nothing -> (1, "push argument 0\n")
     in  pushThis ++ 
         intercalate "" (map (compileExpr symbols) args) ++
-        "call " ++ classStr ++ "." ++ stringOf func ++ " " ++ (show $ length args + 1) ++ "\n"
+        "call " ++ classStr ++ "." ++ stringOf func ++ " " ++ (show $ length args + argOffset) ++ "\n"
