@@ -234,7 +234,7 @@ subroutineDec = do
     pure $ SubroutineDec (Keyword subRoutineType) returnType sName pList sBody
 
 param :: Parser Param
-param = Param <$> typeKeyword <*> varName
+param = Param <$> (typeKeyword <|> identifier) <*> varName
 
 klass :: Parser Klass
 klass = do
