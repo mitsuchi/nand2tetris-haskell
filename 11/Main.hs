@@ -7,6 +7,7 @@ import System.IO
 
 import Parser
 import Combinator
+import Compile
 import XmlGen
 
 main = do
@@ -18,6 +19,7 @@ main = do
             putStrLn "error! --"
             putStrLn e
         Right r -> do
+            --putStr $ xmlGenClass r
             putStr $ xmlGenClass r
             --print r
     
@@ -27,4 +29,16 @@ pexpr program = case parse expr program of
 
 pclass program = case parse klass program of
     Right r -> putStr $ xmlGenClass r
-    Left l -> putStrLn "error"        
+    Left l -> putStrLn "error"
+
+stclass program = case parse klass program of
+        Right r -> print $ makeSymbolTableForClass r
+        Left l -> putStrLn "error"
+
+stsubroutine program = case parse subroutineDec program of
+        Right r -> print $ makeSymbolTableForSubroutine r
+        Left l -> putStrLn "error"        
+
+cclass program = case parse klass program of
+    Right r -> putStr $ compileClass r
+    Left l -> putStrLn $ "error: " ++ l

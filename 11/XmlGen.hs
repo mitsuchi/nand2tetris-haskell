@@ -172,18 +172,3 @@ xmlGenClass (Klass className classVarDecs subroutineDecs) =
         (foldr (\a s -> xmlGenClassVarDec a ++ s) "" classVarDecs) ++
         (foldr (\a s -> xmlGenSubroutineDec a ++ s) "" subroutineDecs) ++
         tag "symbol" "}"
-
-makeSymbolTableForClass :: Klass -> SymbolTable        
-makeSymbolTableForClass (Klass className classVarDecs subroutineDecs) =
-    makeSymbolTableForClass' classVarDecs M.empty
-
-makeSymbolTableForClass' :: [ClassVarDec] -> SymbolTable -> SymbolTable
-makeSymbolTableForClass' [] table = table
-makeSymbolTableForClass' (dec:decs) table = 
-    makeSymbolTableForClass' decs (addToTable dec table)
-
-addToTable :: ClassVarDec -> SymbolTable -> SymbolTable
-addToTable (ClassVarDec kind typeName vars) table =
-    let t = stringOf typeName;
-        k = stringOf kind
-    in foldr (\v st -> define st (stringOf v) t k (varCount st k)) table vars
