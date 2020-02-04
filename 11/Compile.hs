@@ -85,16 +85,16 @@ compileSubroutineDec classStr subr@(SubroutineDec funcType returnType funcName p
       intercalate "" stmtsVM
     where numLocalVars (SubroutineBody varDecs stmts) = foldr (\(VarDec _ vars) total -> length vars + total) 0 varDecs
 
-
 compileStmt :: Stmt -> Compiler String
-compileStmt (Let varTerm valExpr) = do
-    varVM <- case varTerm of
-                ArrayAccess v indexExpr -> pure ""
-                ti@(TermIdentifier i) -> do
-                    valVM <- compileVal ti
-                    pure $ writePop valVM
+compileStmt (Let (ArrayAccess arrayName indexExpr) valExpr) = do
+    indexVM <- compileExpr indexExpr
+    arrayVM <- compileTerm (TermIdentifier arrayName)
     valVM <- compileExpr valExpr
-    pure $ valVM ++ varVM
+    pure $ indexVM ++ arrayVM ++ "add\n" ++ valVM ++ "pop temp 0\npop pointer 1\npush temp 0\npop that 0\n"
+compileStmt (Let ti@(TermIdentifier i) valExpr) = do    
+    tiVM <- compileVal ti
+    valVM <- compileExpr valExpr
+    pure $ valVM ++ writePop tiVM            
 compileStmt (Do subCall) = compileSubroutineCall subCall 
 compileStmt (Return Nothing) = pure "pop temp 0\npush constant 0\nreturn\n"
 compileStmt (While expr stmts) = do
