@@ -48,3 +48,9 @@ cf file = do
     case parse (spaces >> klass) content of
         Right r -> putStr $ compile r
         Left l -> putStrLn $ "error: " ++ l
+
+xf file = do
+    content <- readFile file
+    case parse (spaces >> klass) content of
+        Right r -> putStr $ xmlGenClass r
+        Left l -> putStrLn $ "error: " ++ l

@@ -79,7 +79,7 @@ compileClass cls@(Klass className classVarDecs subroutineDecs) =
         let stClass = makeSymbolTableForClass cls
             classSymbolEnv = SymbolEnv { table = stClass, outer = Nothing }
         put $ Context {whileCount = 0, ifCount = 0, symbolEnv = classSymbolEnv}
-        vms <- mapM (compileSubroutineDec (stringOf className)) subroutineDecs
+        vms <- mapMR (compileSubroutineDec (stringOf className)) subroutineDecs
         pure $ intercalate "" vms
 
 compileSubroutineDec :: String -> SubroutineDec -> Compiler String
@@ -88,12 +88,16 @@ compileSubroutineDec classStr subr@(SubroutineDec funcType returnType funcName p
     let subroutineSymbols = makeSymbolTableForSubroutine subr classStr
         SubroutineBody varDecs stmts = funcBody
         se = SymbolEnv { table = subroutineSymbols, outer = Just (symbolEnv ctx) }
-    --put $ Context { whileCount = whileCount ctx, ifCount = ifCount ctx, symbolEnv = se }
-    put $ updateSymbolEnv ctx se
-    stmtsVM <- mapM compileStmt stmts
+    put $ Context { whileCount = 0, ifCount = 0, symbolEnv = se }
+    stmtsVM <- mapMR compileStmt stmts
     pure $ "function " ++ classStr ++ "." ++ (stringOf funcName) ++ " " ++ (show $ numLocalVars funcBody) ++ "\n" ++
       intercalate "" stmtsVM
     where numLocalVars (SubroutineBody varDecs stmts) = foldr (\(VarDec _ vars) total -> length vars + total) 0 varDecs
+
+mapMR :: (Monad m) => (a -> m b) -> [a] -> m [b]
+mapMR f as = do
+    bs <- mapM f (reverse as)
+    pure $ (reverse bs)
 
 compileStmt :: Stmt -> Compiler String
 compileStmt (Let (ArrayAccess arrayName indexExpr) valExpr) = do
@@ -109,15 +113,17 @@ compileStmt (Do subCall@(SubroutineCall _ _ args)) = do
      doVM <- compileSubroutineCall subCall
      pure $ doVM ++ "pop temp 0\n"
 compileStmt (Return Nothing) = pure "push constant 0\nreturn\n"
+compileStmt (Return (Just expr)) = do
+    exprVM <- compileExpr expr
+    pure $ exprVM ++ "return\n"
 compileStmt (While expr stmts) = do
     ctx <- get
-    let wc = whileCount ctx
-    --put $ Context {whileCount = wc + 1, symbolEnv = symbolEnv ctx}
-    put $ updateWhileCount ctx (wc + 1)
-    let labelBegin = "WHILE_EXP" ++ (show wc) ++ "\n"
-        labelEnd = "WHILE_END" ++ (show wc) ++ "\n"
+    wc <- pure $ whileCount ctx
+    labelBegin <- pure $ "WHILE_EXP" ++ (show wc) ++ "\n"
+    labelEnd <- pure $ "WHILE_END" ++ (show wc) ++ "\n"
     condVM <- compileExpr expr
-    stmtVMs <- mapM compileStmt stmts
+    stmtVMs <- mapMR compileStmt stmts
+    put $ updateWhileCount ctx (wc + 1) 
     pure $ "label " ++ labelBegin ++ 
            condVM ++ 
            "not\n" ++ 
@@ -133,8 +139,8 @@ compileStmt (If expr thenStmts (Just elseStmts)) = do
         labelIfEnd = "IF_END" ++ (show count) ++ "\n"
     put $ updateIfCount ctx (count + 1)
     condVM <- compileExpr expr
-    thenStmtVMs <- mapM compileStmt thenStmts
-    elseStmtVMs <- mapM compileStmt elseStmts
+    thenStmtVMs <- mapMR compileStmt thenStmts
+    elseStmtVMs <- mapMR compileStmt elseStmts
     pure $ condVM ++
            "if-goto " ++ labelIfTrue ++
            "goto " ++ labelIfFalse ++
@@ -151,13 +157,14 @@ compileStmt (If expr thenStmts Nothing) = do
         labelIfFalse = "IF_FALSE" ++ (show count) ++ "\n"
     put $ updateIfCount ctx (count + 1)
     condVM <- compileExpr expr
-    thenStmtVMs <- mapM compileStmt thenStmts
+    thenStmtVMs <- mapMR compileStmt thenStmts
     pure $ condVM ++
            "if-goto " ++ labelIfTrue ++
            "goto " ++ labelIfFalse ++
            "label " ++ labelIfTrue ++
            intercalate "" thenStmtVMs ++
            "label " ++ labelIfFalse
+compileStmt x = error $ "compileStmt: " ++ show x
 
 compileVal ::  Term -> Compiler String
 compileVal (TermIdentifier ti) = valToStack (stringOf ti)
@@ -204,13 +211,15 @@ compileTerm (ArrayAccess arrayName indexExpr) = do
 compileTerm (KeywordConstant k) = case (stringOf k) of
     "true" -> pure "push constant 0\nnot\n"
     "false" -> pure "push constant 0\n"
+    "null" -> pure "push constant 0\n"
+    x -> error $ "compileTerm: " ++ x
 compileTerm (UnaryOp op t) = do
     let opVM =
             case op of
                 "~" -> "not"
                 "-" -> "neg"
     termVM <- compileTerm t
-    pure $ termVM ++ opVM
+    pure $ termVM ++ opVM ++ "\n"
 
 writePush :: String -> String
 writePush name = "push " ++ name ++ "\n"
@@ -232,6 +241,8 @@ compileArith "<" = pure "lt\n"
 compileArith ">" = pure "gt\n"
 compileArith "&" = pure "and\n"
 compileArith "|" = pure "or\n"
+compileArith "=" = pure "eq\n"
+compileArith x = error $ "compileArith: " ++ x
 
 compileSubroutineCall :: SubroutineCall -> Compiler String
 compileSubroutineCall (SubroutineCall maybeClass func args) = do
@@ -245,7 +256,7 @@ compileSubroutineCall (SubroutineCall maybeClass func args) = do
         (argOffset, pushThis) = case maybeClass of
                         Just cls -> (0, "")
                         Nothing -> (1, "push argument 0\n")
-    argsVM <- mapM compileExpr args
+    argsVM <- mapMR compileExpr args
     pure $ pushThis ++ 
         intercalate "" argsVM ++
         "call " ++ classStr ++ "." ++ stringOf func ++ " " ++ (show $ length args + argOffset) ++ "\n"
