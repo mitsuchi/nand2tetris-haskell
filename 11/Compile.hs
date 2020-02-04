@@ -151,6 +151,10 @@ compileTerm (StringConstant s) = pure $
     "push constant " ++ (show $ length s) ++ "\n" ++
     "call String.new 1\n" ++
     intercalate "" (map (\c -> "push constant " ++ (show $ ord c) ++ "\ncall String.appendChar 2\n") s)
+compileTerm (ArrayAccess arrayName indexExpr) = do
+    indexVM <- compileExpr indexExpr
+    arrayVM <- compileTerm (TermIdentifier arrayName)
+    pure $ indexVM ++ arrayVM ++ "add\npop pointer 1\npush that 0\n"
 
 writePush :: String -> String
 writePush name = "push " ++ name ++ "\n"
