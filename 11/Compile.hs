@@ -125,6 +125,39 @@ compileStmt (While expr stmts) = do
            intercalate "" stmtVMs ++
            "goto " ++ labelBegin ++
            "label " ++ labelEnd
+compileStmt (If expr thenStmts (Just elseStmts)) = do
+    ctx <- get
+    let count = ifCount ctx
+        labelIfTrue = "IF_TRUE" ++ (show count) ++ "\n"
+        labelIfFalse = "IF_FALSE" ++ (show count) ++ "\n"
+        labelIfEnd = "IF_END" ++ (show count) ++ "\n"
+    put $ updateIfCount ctx (count + 1)
+    condVM <- compileExpr expr
+    thenStmtVMs <- mapM compileStmt thenStmts
+    elseStmtVMs <- mapM compileStmt elseStmts
+    pure $ condVM ++
+           "if-goto " ++ labelIfTrue ++
+           "goto " ++ labelIfFalse ++
+           "label " ++ labelIfTrue ++
+           intercalate "" thenStmtVMs ++
+           "goto " ++ labelIfEnd ++
+           "label " ++ labelIfFalse ++
+           intercalate "" elseStmtVMs ++
+           "label " ++ labelIfEnd
+compileStmt (If expr thenStmts Nothing) = do
+    ctx <- get
+    let count = ifCount ctx
+        labelIfTrue = "IF_TRUE" ++ (show count) ++ "\n"
+        labelIfFalse = "IF_FALSE" ++ (show count) ++ "\n"
+    put $ updateIfCount ctx (count + 1)
+    condVM <- compileExpr expr
+    thenStmtVMs <- mapM compileStmt thenStmts
+    pure $ condVM ++
+           "if-goto " ++ labelIfTrue ++
+           "goto " ++ labelIfFalse ++
+           "label " ++ labelIfTrue ++
+           intercalate "" thenStmtVMs ++
+           "label " ++ labelIfFalse
 
 compileVal ::  Term -> Compiler String
 compileVal (TermIdentifier ti) = valToStack (stringOf ti)
