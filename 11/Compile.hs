@@ -157,6 +157,16 @@ compileTerm (ArrayAccess arrayName indexExpr) = do
     indexVM <- compileExpr indexExpr
     arrayVM <- compileTerm (TermIdentifier arrayName)
     pure $ indexVM ++ arrayVM ++ "add\npop pointer 1\npush that 0\n"
+compileTerm (KeywordConstant k) = case (stringOf k) of
+    "true" -> pure "push constant 0\nnot\n"
+    "false" -> pure "push constant 0\n"
+compileTerm (UnaryOp op t) = do
+    let opVM =
+            case op of
+                "~" -> "not"
+                "-" -> "neg"
+    termVM <- compileTerm t
+    pure $ termVM ++ opVM
 
 writePush :: String -> String
 writePush name = "push " ++ name ++ "\n"
@@ -176,6 +186,8 @@ compileArith "*" = pure "call Math.multiply 2\n"
 compileArith "/" = pure "call Math.divide 2\n"
 compileArith "<" = pure "lt\n"
 compileArith ">" = pure "gt\n"
+compileArith "&" = pure "and\n"
+compileArith "|" = pure "or\n"
 
 compileSubroutineCall :: SubroutineCall -> Compiler String
 compileSubroutineCall (SubroutineCall maybeClass func args) = do
