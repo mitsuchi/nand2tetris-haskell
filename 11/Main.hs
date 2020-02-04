@@ -20,7 +20,7 @@ main = do
             putStrLn e
         Right r -> do
             --putStr $ xmlGenClass r
-            putStr $ xmlGenClass r
+            putStr $ compile r
             --print r
     
 pexpr program = case parse expr program of
@@ -42,3 +42,9 @@ stsubroutine program = case parse subroutineDec program of
 mclass program = case parse klass program of
     Right r -> putStr $ compile r
     Left l -> putStrLn $ "error: " ++ l
+
+cf file = do
+    content <- readFile file
+    case parse (spaces >> klass) content of
+        Right r -> putStr $ compile r
+        Left l -> putStrLn $ "error: " ++ l

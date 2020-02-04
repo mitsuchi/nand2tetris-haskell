@@ -95,8 +95,10 @@ compileStmt (Let ti@(TermIdentifier i) valExpr) = do
     tiVM <- compileVal ti
     valVM <- compileExpr valExpr
     pure $ valVM ++ writePop tiVM            
-compileStmt (Do subCall) = compileSubroutineCall subCall 
-compileStmt (Return Nothing) = pure "pop temp 0\npush constant 0\nreturn\n"
+compileStmt (Do subCall@(SubroutineCall _ _ args)) = do
+     doVM <- compileSubroutineCall subCall
+     pure $ doVM ++ "pop temp 0\n"
+compileStmt (Return Nothing) = pure "push constant 0\nreturn\n"
 compileStmt (While expr stmts) = do
     ctx <- get
     let wc = whileCount ctx
@@ -171,7 +173,7 @@ compileArith :: String -> Compiler String
 compileArith "+" = pure "add\n"
 compileArith "-" = pure "sub\n"
 compileArith "*" = pure "call Math.multiply 2\n"
-compileArith "/" = pure "call Math.devide 2\n"
+compileArith "/" = pure "call Math.divide 2\n"
 compileArith "<" = pure "lt\n"
 compileArith ">" = pure "gt\n"
 
