@@ -58,18 +58,27 @@ addParamToTable (Param typeName varName) table =
         k = "argument"
     in define table v t k (varCount table k)
 
-data Context = Context { whileCount :: Int, symbolEnv :: SymbolEnv } deriving Show
+data Context = Context { whileCount :: Int, ifCount :: Int, symbolEnv :: SymbolEnv } deriving Show
 type Compiler a = State Context a
 
+updateIfCount :: Context -> Int -> Context
+updateIfCount ctx count = Context {whileCount = whileCount ctx, ifCount = count, symbolEnv = symbolEnv ctx}
+
+updateWhileCount :: Context -> Int -> Context
+updateWhileCount ctx count = Context {whileCount = count, ifCount = ifCount ctx, symbolEnv = symbolEnv ctx}
+
+updateSymbolEnv :: Context -> SymbolEnv -> Context
+updateSymbolEnv ctx env = Context {whileCount = whileCount ctx, ifCount = ifCount ctx, symbolEnv = env}
+
 compile :: Klass -> String
-compile k = execState (compileClass k) (Context {whileCount = 0, symbolEnv = SymbolEnv { table = M.empty, outer = Nothing }})
+compile k = execState (compileClass k) (Context {whileCount = 0, ifCount = 0, symbolEnv = SymbolEnv { table = M.empty, outer = Nothing }})
 
 compileClass :: Klass -> Compiler String
 compileClass cls@(Klass className classVarDecs subroutineDecs) =
     do
         let stClass = makeSymbolTableForClass cls
             classSymbolEnv = SymbolEnv { table = stClass, outer = Nothing }
-        put $ Context {whileCount = 0, symbolEnv = classSymbolEnv}
+        put $ Context {whileCount = 0, ifCount = 0, symbolEnv = classSymbolEnv}
         vms <- mapM (compileSubroutineDec (stringOf className)) subroutineDecs
         pure $ intercalate "" vms
 
@@ -79,7 +88,8 @@ compileSubroutineDec classStr subr@(SubroutineDec funcType returnType funcName p
     let subroutineSymbols = makeSymbolTableForSubroutine subr classStr
         SubroutineBody varDecs stmts = funcBody
         se = SymbolEnv { table = subroutineSymbols, outer = Just (symbolEnv ctx) }
-    put $ Context { whileCount = whileCount ctx, symbolEnv = se }
+    --put $ Context { whileCount = whileCount ctx, ifCount = ifCount ctx, symbolEnv = se }
+    put $ updateSymbolEnv ctx se
     stmtsVM <- mapM compileStmt stmts
     pure $ "function " ++ classStr ++ "." ++ (stringOf funcName) ++ " " ++ (show $ numLocalVars funcBody) ++ "\n" ++
       intercalate "" stmtsVM
@@ -102,7 +112,8 @@ compileStmt (Return Nothing) = pure "push constant 0\nreturn\n"
 compileStmt (While expr stmts) = do
     ctx <- get
     let wc = whileCount ctx
-    put $ Context {whileCount = wc + 1, symbolEnv = symbolEnv ctx}
+    --put $ Context {whileCount = wc + 1, symbolEnv = symbolEnv ctx}
+    put $ updateWhileCount ctx (wc + 1)
     let labelBegin = "WHILE_EXP" ++ (show wc) ++ "\n"
         labelEnd = "WHILE_END" ++ (show wc) ++ "\n"
     condVM <- compileExpr expr
