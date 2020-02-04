@@ -97,6 +97,21 @@ compileStmt (Let varTerm valExpr) = do
     pure $ valVM ++ varVM
 compileStmt (Do subCall) = compileSubroutineCall subCall 
 compileStmt (Return Nothing) = pure "pop temp 0\npush constant 0\nreturn\n"
+compileStmt (While expr stmts) = do
+    ctx <- get
+    let wc = whileCount ctx
+    put $ Context {whileCount = wc + 1, symbolEnv = symbolEnv ctx}
+    let labelBegin = "WHILE_EXP" ++ (show wc) ++ "\n"
+        labelEnd = "WHILE_END" ++ (show wc) ++ "\n"
+    condVM <- compileExpr expr
+    stmtVMs <- mapM compileStmt stmts
+    pure $ "label " ++ labelBegin ++ 
+           condVM ++ 
+           "not\n" ++ 
+           "if-goto " ++ labelEnd ++ 
+           intercalate "" stmtVMs ++
+           "goto " ++ labelBegin ++
+           "label " ++ labelEnd
 
 compileVal ::  Term -> Compiler String
 compileVal (TermIdentifier ti) = valToStack (stringOf ti)
@@ -152,6 +167,9 @@ compileArith :: String -> Compiler String
 compileArith "+" = pure "add\n"
 compileArith "-" = pure "sub\n"
 compileArith "*" = pure "call Math.multiply 2\n"
+compileArith "/" = pure "call Math.devide 2\n"
+compileArith "<" = pure "lt\n"
+compileArith ">" = pure "gt\n"
 
 compileSubroutineCall :: SubroutineCall -> Compiler String
 compileSubroutineCall (SubroutineCall maybeClass func args) = do
