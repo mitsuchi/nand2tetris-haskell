@@ -39,10 +39,6 @@ stsubroutine program = case parse subroutineDec program of
         Right r -> print $ makeSymbolTableForSubroutine r "DummyClass"
         Left l -> putStrLn "error"        
 
-cclass program = case parse klass program of
-    Right r -> putStr $ compileClass r
-    Left l -> putStrLn $ "error: " ++ l
-
 mclass program = case parse klass program of
     Right r -> putStr $ compile r
     Left l -> putStrLn $ "error: " ++ l
