@@ -1,6 +1,8 @@
 module Main where
 
 import Control.Monad
+import Data.List
+import System.Directory
 import System.Environment (getArgs)
 import System.Info
 import System.IO
@@ -13,16 +15,23 @@ import XmlGen
 main = do
     args <- getArgs
     let file = args !! 0
+    if isSuffixOf ".jack" file
+    then compileFromFile file
+    else compileFromDirectory file
+
+compileFromFile file = do
     content <- readFile file
     case parse (spaces >> klass) content of
         Left e -> do
             putStrLn "error! --"
             putStrLn e
         Right r -> do
-            --putStr $ xmlGenClass r
-            putStr $ compile r
-            --print r
-    
+            writeFile (changePostfix file "vm") (compile r)
+
+compileFromDirectory dir = do
+    files <- listDirectory dir
+    forM_ (filter (isSuffixOf ".jack") files) $ \file -> compileFromFile $ dir ++ "/" ++ file
+            
 pexpr program = case parse expr program of
     Right r -> putStr $ xmlGenExpr r
     Left l -> putStrLn "error"
@@ -54,3 +63,6 @@ xf file = do
     case parse (spaces >> klass) content of
         Right r -> putStr $ xmlGenClass r
         Left l -> putStrLn $ "error: " ++ l
+
+changePostfix :: String -> String -> String
+changePostfix str postfix = (++ postfix ) . reverse . dropWhile (/= '.') . reverse $ str
