@@ -32,6 +32,7 @@ makeSymbolTableForSubroutine (SubroutineDec accessName _ _ params subroutineBody
         initialTable = case (stringOf accessName) of
             "function" -> M.empty
             "method" -> M.fromList [("this", SymbolRow {typeName=classStr, kind="argument", index=0})]
+            "constructor" -> M.empty         
         st = makeSymbolTableForSubroutine' varDecs initialTable
     in makeSymbolTableForSubroutineArgs params st
 
@@ -212,6 +213,8 @@ compileTerm (KeywordConstant k) = case (stringOf k) of
     "true" -> pure "push constant 0\nnot\n"
     "false" -> pure "push constant 0\n"
     "null" -> pure "push constant 0\n"
+    "this" -> pure "push pointer 0\n"
+    "that" -> pure "push pointer 1\n"
     x -> error $ "compileTerm: " ++ x
 compileTerm (UnaryOp op t) = do
     let opVM =
@@ -247,14 +250,21 @@ compileArith x = error $ "compileArith: " ++ x
 compileSubroutineCall :: SubroutineCall -> Compiler String
 compileSubroutineCall (SubroutineCall maybeClass func args) = do
     ctx <- get
+    pushObject <- case maybeClass of
+        Just cls -> compileTerm (TermIdentifier cls)
+        Nothing -> pure ""
     let symbols = symbolEnv ctx
         classStr = case maybeClass of
-                        Just cls -> stringOf cls
+                        Just cls -> case typeOf symbols (stringOf cls) of
+                                        Just kls -> kls
+                                        Nothing -> (stringOf cls)
                         Nothing -> case typeOf symbols "this" of
                                     Just cls' -> cls'
                                     Nothing -> "error"
         (argOffset, pushThis) = case maybeClass of
-                        Just cls -> (0, "")
+                        Just cls -> case indexOf symbols (stringOf cls) of
+                                        Just index -> (1, pushObject)
+                                        Nothing -> (0, "")
                         Nothing -> (1, "push argument 0\n")
     argsVM <- mapMR compileExpr args
     pure $ pushThis ++ 
