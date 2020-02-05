@@ -13,7 +13,7 @@ import Debug.Trace
 
 makeSymbolTableForClass :: Klass -> SymbolTable        
 makeSymbolTableForClass (Klass className classVarDecs subroutineDecs) =
-    let st = makeSymbolTableForClass' classVarDecs M.empty
+    let st = makeSymbolTableForClass' classVarDecs (M.fromList [("0class", SymbolRow { kind="class", typeName=stringOf className, index=0} )])
     in addSubroutine subroutineDecs st
 
 addSubroutine :: [SubroutineDec] -> SymbolTable -> SymbolTable
@@ -44,7 +44,7 @@ makeSymbolTableForSubroutine (SubroutineDec accessName _ _ params subroutineBody
         initialTable = case (stringOf accessName) of
             "function" -> M.empty
             "method" -> M.fromList [("this", SymbolRow {typeName=classStr, kind="argument", index=0})]
-            "constructor" -> M.empty         
+            "constructor" -> M.empty
         st = makeSymbolTableForSubroutine' varDecs initialTable
     in makeSymbolTableForSubroutineArgs params st
 
@@ -273,18 +273,19 @@ compileSubroutineCall (SubroutineCall maybeClass func args) = do
     let symbols = symbolEnv ctx
         classStr = case maybeClass of
                         Just cls -> case typeOf symbols (stringOf cls) of
-                                        Just kls -> kls
-                                        Nothing -> (stringOf cls)
-                        Nothing -> case typeOf symbols "this" of
-                                    Just cls' -> cls'
-                                    Nothing -> "error"
+                                        Just kls -> kls  -- game.start() で game を Game にする
+                                        Nothing -> (stringOf cls) -- Game.start() で Game をそのまま使う
+                        Nothing -> case typeOf (symbolEnv ctx) "0class" of -- 0class を kind:class, type:Game, index:0 としておく
+                                        Just kls -> kls -- start() を Game.start() と解釈する
+                                        Nothing -> "error: compileSubroutineCall 0" -- ここには来ないはず
         (argOffset, pushThis) = case maybeClass of
                         Just cls -> case indexOf symbols (stringOf cls) of
                                         Just index -> (1, pushObject)
                                         Nothing -> (0, "")
                         Nothing -> case kindOf symbols (stringOf func) of
                                         Just "method" -> (1, "push pointer 0\n")
-                                        _             -> (1, "push argument 0\n")
+                                        --_             -> (1, "push argument 0\n")
+                                        _             -> (1, "error: compileSubroutineCall 1\n")
     argsVM <- mapMR compileExpr args
     pure $ pushThis ++ 
         intercalate "" argsVM ++
