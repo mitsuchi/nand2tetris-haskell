@@ -89,10 +89,14 @@ compileSubroutineDec classStr subr@(SubroutineDec funcType returnType funcName p
     let subroutineSymbols = makeSymbolTableForSubroutine subr classStr
         SubroutineBody varDecs stmts = funcBody
         se = SymbolEnv { table = subroutineSymbols, outer = Just (symbolEnv ctx) }
+        memoryAllocVM = case stringOf funcType of
+                         "constructor" -> "push constant " ++ (show $ varCount (table $ symbolEnv ctx) "field") ++ "\ncall Memory.alloc 1\npop pointer 0\n"
+                         _             -> ""
     put $ Context { whileCount = 0, ifCount = 0, symbolEnv = se }
     stmtsVM <- mapMR compileStmt stmts
     pure $ "function " ++ classStr ++ "." ++ (stringOf funcName) ++ " " ++ (show $ numLocalVars funcBody) ++ "\n" ++
-      intercalate "" stmtsVM
+           memoryAllocVM ++
+           intercalate "" stmtsVM
     where numLocalVars (SubroutineBody varDecs stmts) = foldr (\(VarDec _ vars) total -> length vars + total) 0 varDecs
 
 mapMR :: (Monad m) => (a -> m b) -> [a] -> m [b]
