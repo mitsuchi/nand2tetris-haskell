@@ -128,8 +128,8 @@ compileStmt (While expr stmts) = do
     labelBegin <- pure $ "WHILE_EXP" ++ (show wc) ++ "\n"
     labelEnd <- pure $ "WHILE_END" ++ (show wc) ++ "\n"
     condVM <- compileExpr expr
-    stmtVMs <- mapMR compileStmt stmts
     put $ updateWhileCount ctx (wc + 1) 
+    stmtVMs <- mapMR compileStmt stmts
     pure $ "label " ++ labelBegin ++ 
            condVM ++ 
            "not\n" ++ 
