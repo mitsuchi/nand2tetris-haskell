@@ -13,7 +13,13 @@ import Debug.Trace
 
 makeSymbolTableForClass :: Klass -> SymbolTable        
 makeSymbolTableForClass (Klass className classVarDecs subroutineDecs) =
-    makeSymbolTableForClass' classVarDecs M.empty
+    let st = makeSymbolTableForClass' classVarDecs M.empty
+    in addSubroutine subroutineDecs st
+
+addSubroutine :: [SubroutineDec] -> SymbolTable -> SymbolTable
+addSubroutine [] table = table
+addSubroutine (dec:decs) table = 
+    addSubroutine decs (addSubroutineToTable dec table)
 
 makeSymbolTableForClass' :: [ClassVarDec] -> SymbolTable -> SymbolTable
 makeSymbolTableForClass' [] table = table
@@ -25,6 +31,12 @@ addToTable (ClassVarDec kind typeName vars) table =
     let t = stringOf typeName;
         k = stringOf kind
     in foldr (\v st -> define st (stringOf v) t k (varCount st k)) table (reverse vars)
+
+addSubroutineToTable :: SubroutineDec -> SymbolTable -> SymbolTable
+addSubroutineToTable (SubroutineDec kindName returnTypeName subroutineName _ _) table =
+    let t = stringOf returnTypeName;
+        k = stringOf kindName
+    in define table (stringOf subroutineName) t k (varCount table k)
 
 makeSymbolTableForSubroutine :: SubroutineDec -> String -> SymbolTable
 makeSymbolTableForSubroutine (SubroutineDec accessName _ _ params subroutineBody) classStr =
@@ -270,7 +282,9 @@ compileSubroutineCall (SubroutineCall maybeClass func args) = do
                         Just cls -> case indexOf symbols (stringOf cls) of
                                         Just index -> (1, pushObject)
                                         Nothing -> (0, "")
-                        Nothing -> (1, "push argument 0\n")
+                        Nothing -> case kindOf symbols (stringOf func) of
+                                        Just "method" -> (1, "push pointer 0\n")
+                                        _             -> (1, "push argument 0\n")
     argsVM <- mapMR compileExpr args
     pure $ pushThis ++ 
         intercalate "" argsVM ++
